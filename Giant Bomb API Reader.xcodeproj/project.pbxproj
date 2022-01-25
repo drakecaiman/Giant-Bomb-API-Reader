@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AEFA39C027964177000788D1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFA39BF27964177000788D1 /* main.swift */; };
+		AEFA39C827988A80000788D1 /* OpenAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFA39C727988A80000788D1 /* OpenAPI.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,7 @@
 /* Begin PBXFileReference section */
 		AEFA39BC27964177000788D1 /* Giant Bomb API Reader */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Giant Bomb API Reader"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEFA39BF27964177000788D1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		AEFA39C727988A80000788D1 /* OpenAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAPI.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +43,7 @@
 		AEFA39B327964177000788D1 = {
 			isa = PBXGroup;
 			children = (
+				AEFA39C627988A5F000788D1 /* OpenAPI */,
 				AEFA39BE27964177000788D1 /* Giant Bomb API Reader */,
 				AEFA39BD27964177000788D1 /* Products */,
 			);
@@ -60,6 +63,14 @@
 				AEFA39BF27964177000788D1 /* main.swift */,
 			);
 			path = "Giant Bomb API Reader";
+			sourceTree = "<group>";
+		};
+		AEFA39C627988A5F000788D1 /* OpenAPI */ = {
+			isa = PBXGroup;
+			children = (
+				AEFA39C727988A80000788D1 /* OpenAPI.swift */,
+			);
+			path = OpenAPI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -120,6 +131,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AEFA39C827988A80000788D1 /* OpenAPI.swift in Sources */,
 				AEFA39C027964177000788D1 /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
