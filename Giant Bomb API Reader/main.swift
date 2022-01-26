@@ -10,6 +10,7 @@ import WebKit
 
 let urlDataDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 let pathParameterRegularExpression = try? NSRegularExpression(pattern: "(?<=\\{).*?(?=\\})", options: [])
+let descriptionTableRowXPath = "tbody/tr/td[strong[starts-with(text(),'Description:')]]/p"
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
 {
@@ -50,13 +51,14 @@ do
       print("Unable to get URL for path")
       exit(EXIT_FAILURE)
     }
+    let nextSummary = try? nextPathNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString
     let apiPath = getAPIPath(fromURL: url)
     var nextOperation = getOperation(fromTableNode: nextPathNode)
     for nextParameter in getParameters(fromPath: apiPath)
     {
       nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, isRequired: true))
     }
-    let nextPathItem = PathItem(get: nextOperation)
+    let nextPathItem = PathItem(summary: nextSummary, get: nextOperation)
     paths[apiPath] = nextPathItem
   }
   
@@ -175,10 +177,18 @@ extension XMLNode
     let htmlData = htmlString.data(using: .utf8)!
     let attributedString = NSAttributedString(html: htmlData, documentAttributes: nil)
     
-    return attributedString!.string
+    return attributedString!.string.apiPageFormattedString
+  }
+}
+
+extension String
+{
+  var apiPageFormattedString : String
+  {
+    self
+      .trimmingCharacters(in: .whitespacesAndNewlines)
       .replacingOccurrences(of: "\n", with: "<br />")
       .replacingOccurrences(of: "\t", with: "")
       .replacingOccurrences(of: "•", with: "")
-      .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 }

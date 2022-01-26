@@ -32,6 +32,8 @@ struct Server : Codable
 
 struct PathItem : Codable
 {
+  var summary : String? = nil
+  var description : String? = nil
   var get : Operation? = nil
 }
 
