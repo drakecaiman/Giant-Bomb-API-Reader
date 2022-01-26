@@ -96,7 +96,7 @@ func getOperation(fromTableNode tableNode: XMLNode) -> Operation
 //      print("Unable to get property name")
       continue
     }
-    guard let nextParameterDescription = try? nextFilter.nodes(forXPath: "td[2]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let nextParameterDescription = try? nextFilter.nodes(forXPath: "td[2]").first?.giantBombDescriptionString
     else {
 //      print("Unable to get property description")
       continue
@@ -124,7 +124,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
 //      print("Unable to get property name")
       continue
     }
-    guard let nextPropertyDescription = try? nextRow.nodes(forXPath: "td[2]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let nextPropertyDescription = try? nextRow.nodes(forXPath: "td[2]").first?.giantBombDescriptionString
     else {
 //      print("Unable to get property description")
       continue
@@ -166,4 +166,20 @@ func getParameters(fromPath pathString: String) -> [String]
     parameters.append(String(pathString[matchRange]))
   }
   return parameters
+}
+
+extension XMLNode
+{
+  var giantBombDescriptionString : String
+  {
+    let htmlString = self.xmlString(options: .documentTidyHTML)
+    let htmlData = htmlString.data(using: .utf8)!
+    let attributedString = NSAttributedString(html: htmlData, documentAttributes: nil)
+    
+    return attributedString!.string
+      .replacingOccurrences(of: "\n", with: "<br />")
+      .replacingOccurrences(of: "\t", with: "")
+      .replacingOccurrences(of: "•", with: "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
 }
