@@ -83,7 +83,7 @@ catch
 func getOperation(fromTableNode tableNode: XMLNode) -> Operation
 {
   var operation = Operation(parameters: [], responses: Responses(responses: [String:Response]()))
-  let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[following-sibling::tr/td/strong[text() = 'Fields']]"
+  let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[not(preceding-sibling::tr/td/strong[text() = 'Fields'])]"
   let fieldTableRowXPath = "tbody/tr[td[strong[text() = 'Fields']]]//following-sibling::tr"
   guard let filterTableRowNodes = try? tableNode.nodes(forXPath: filterTableRowXPath),
         let fieldTableRowNodes = try? tableNode.nodes(forXPath: fieldTableRowXPath)
@@ -104,7 +104,6 @@ func getOperation(fromTableNode tableNode: XMLNode) -> Operation
     let nextParameter = Parameter(name: nextParameterName, description: nextParameterDescription, location: .query, isRequired: false)
     operation.parameters?.append(nextParameter)
   }
-  
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   let nextMediaType = MediaType(schema: pathSchema)
   let nextResponse = Response(description: "", content: ["application/json": nextMediaType])
