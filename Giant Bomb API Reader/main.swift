@@ -86,7 +86,8 @@ catch
 func getOperation(fromTableNode tableNode: XMLNode) -> Operation
 {
   var operation = Operation(parameters: [], responses: Responses(responses: [String:Response]()))
-  let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[not(preceding-sibling::tr/td/strong[text() = 'Fields'])]"
+  let fieldsHeaderTableRowXPath = "td/strong[text() = 'Fields']"
+  let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[not(preceding-sibling::tr/\(fieldsHeaderTableRowXPath)) and not(\(fieldsHeaderTableRowXPath))]"
   let fieldTableRowXPath = "tbody/tr[td[strong[text() = 'Fields']]]//following-sibling::tr"
   guard let filterTableRowNodes = try? tableNode.nodes(forXPath: filterTableRowXPath),
         let fieldTableRowNodes = try? tableNode.nodes(forXPath: fieldTableRowXPath)
