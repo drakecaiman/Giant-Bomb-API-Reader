@@ -41,6 +41,7 @@ struct Operation : Codable
 {
   var parameters : [Parameter]? = nil
   var responses : Responses
+  var deprecated : Bool? = nil
   var security : [[String : [String]]]? = nil
 }
 

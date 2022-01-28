@@ -54,6 +54,7 @@ do
     let nextSummary = try? nextPathNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString
     let apiPath = getAPIPath(fromURL: url)
     var nextOperation = getOperation(fromTableNode: nextPathNode)
+    nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     for nextParameter in getParameters(fromPath: apiPath)
     {
       nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, isRequired: true))
