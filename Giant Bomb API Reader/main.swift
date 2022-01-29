@@ -102,12 +102,10 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   {
     guard let nextParameterName = try? nextFilter.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
     else {
-//      print("Unable to get property name")
       continue
     }
     guard let nextParameterDescription = try? nextFilter.nodes(forXPath: "td[2]").first?.giantBombDescriptionString
     else {
-//      print("Unable to get property description")
       continue
     }
     let nextParameter = Parameter(name: nextParameterName, description: nextParameterDescription, location: .query, isRequired: false)
@@ -131,12 +129,10 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
   {
     guard let nextPropertyName = try? nextRow.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
     else {
-//      print("Unable to get property name")
       continue
     }
     guard let nextPropertyDescription = try? nextRow.nodes(forXPath: "td[2]").first?.giantBombDescriptionString
     else {
-//      print("Unable to get property description")
       continue
     }
     propertiesDictionary[nextPropertyName] = Schema(type: "string", description: nextPropertyDescription)
