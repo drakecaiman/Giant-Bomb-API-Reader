@@ -80,7 +80,8 @@ do
     print("Unable to encode JSON")
     exit(EXIT_FAILURE)
   }
-  print(String(data: json, encoding: .utf8)!)
+  guard let jsonString = String(data: json, encoding: .utf8) else { exit(EXIT_FAILURE) }
+  try? jsonString.write(toFile: "Giant Bomb API OpenAPI Specification.json", atomically: true, encoding: .utf8)
 }
 catch
 {
