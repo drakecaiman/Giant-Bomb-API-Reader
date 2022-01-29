@@ -63,7 +63,7 @@ do
     {
       nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, isRequired: true))
     }
-    let nextPathItem = PathItem(summary: nextSummary, get: nextOperation)
+    let nextPathItem = PathItem(get: nextOperation)
     paths[apiPath] = nextPathItem
   }
   
@@ -115,7 +115,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   let schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
   let nextMediaType = MediaType(schema: schema)
-  let nextResponse = Response(description: "", content: ["application/json": nextMediaType])
+  let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? ""
+  let nextResponse = Response(description: nextDescription, content: ["application/json": nextMediaType])
   operation.responses.responses!["200"] = nextResponse
   operation.security = [["api_key": []]]
   
