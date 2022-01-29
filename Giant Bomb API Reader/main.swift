@@ -11,6 +11,10 @@ import WebKit
 let urlDataDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 let pathParameterRegularExpression = try? NSRegularExpression(pattern: "(?<=\\{).*?(?=\\})", options: [])
 let descriptionTableRowXPath = "tbody/tr/td[strong[starts-with(text(),'Description:')]]/p"
+let excludeResponseSchemaArray = ["/video/current-live",
+                                  "/video/get-saved-time",
+                                  "/video/get-all-saved-times",
+                                  "/video/save-time"]
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
 {
@@ -53,7 +57,7 @@ do
     }
     let nextSummary = try? nextPathNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString
     let apiPath = getAPIPath(fromURL: url)
-    var nextOperation = getOperation(fromTableNode: nextPathNode)
+    var nextOperation = getOperation(fromTableNode: nextPathNode, forPath: apiPath)
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     for nextParameter in getParameters(fromPath: apiPath)
     {
@@ -83,7 +87,7 @@ catch
   print(error)
 }
 
-func getOperation(fromTableNode tableNode: XMLNode) -> Operation
+func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Operation
 {
   var operation = Operation(parameters: [], responses: Responses(responses: [String:Response]()))
   let fieldsHeaderTableRowXPath = "td/strong[text() = 'Fields']"
@@ -109,7 +113,8 @@ func getOperation(fromTableNode tableNode: XMLNode) -> Operation
     operation.parameters?.append(nextParameter)
   }
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
-  let nextMediaType = MediaType(schema: pathSchema)
+  let schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
+  let nextMediaType = MediaType(schema: schema)
   let nextResponse = Response(description: "", content: ["application/json": nextMediaType])
   operation.responses.responses!["200"] = nextResponse
   operation.security = [["api_key": []]]
@@ -119,7 +124,7 @@ func getOperation(fromTableNode tableNode: XMLNode) -> Operation
 
 func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
 {
-  var propertiesDictionary = [String : Property]()
+  var propertiesDictionary = [String : Schema]()
   for nextRow in tableRowNodes
   {
     guard let nextPropertyName = try? nextRow.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -132,7 +137,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
 //      print("Unable to get property description")
       continue
     }
-    propertiesDictionary[nextPropertyName] = Property(type: "string", description: nextPropertyDescription)
+    propertiesDictionary[nextPropertyName] = Schema(type: "string", description: nextPropertyDescription)
   }
   return Schema(type: "object", properties: propertiesDictionary)
 }
@@ -169,6 +174,14 @@ func getParameters(fromPath pathString: String) -> [String]
     parameters.append(String(pathString[matchRange]))
   }
   return parameters
+}
+
+func getResponseSchema(withChild pathSchema: Schema) -> Schema
+{
+  let arraySchema = Schema(type: "array", items: Schema.ItemsValue.item(pathSchema))
+  let extensionSchema = Schema(type: "object", properties: ["results" : arraySchema])
+  
+  return Schema(type: "object", allOf: [Schema(ref: "#/components/schemas/Response"), extensionSchema])
 }
 
 extension XMLNode

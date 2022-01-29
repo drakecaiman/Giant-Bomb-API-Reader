@@ -112,9 +112,43 @@ struct MediaType : Codable
 
 struct Schema : Codable
 {
-  var type : String
-  var description : String?
-  var properties : [String : Property]
+  enum CodingKeys : String, CodingKey
+  {
+    case ref = "$ref"
+    case type
+    case description
+    case properties
+    case items
+    case allOf
+  }
+  enum ItemsValue : Codable
+  {
+    indirect case item(Schema)
+    
+    func encode(to encoder: Encoder) throws
+    {
+      switch self
+      {
+      case let .item(schema):
+        try schema.encode(to: encoder)
+      }
+    }
+    
+    init(from decoder: Decoder) throws {
+      let item = try Schema(from: decoder)
+      self = .item(item)
+    }
+  }
+  
+//  TODO: `init()` for straight `struct` instead of `ItemsValue` `enum` for `items`
+//  TODO: Find requirements from JSONSchema
+//  TODO: Properly do refs ("ref" property on objects? Protocols)
+  var ref : String? = nil
+  var type : String? = nil
+  var description : String? = nil
+  var properties : [String : Schema]? = nil
+  var items : ItemsValue? = nil
+  var allOf : [Schema]? = nil
 }
 
 enum APILocation : String, Codable
