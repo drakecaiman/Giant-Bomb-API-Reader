@@ -25,7 +25,6 @@ do
 {
   let documentationXMLDocument = try XMLDocument(contentsOf: apiURL, options: [.documentTidyHTML])
   
-  
   // Grab the "Response" format to create the encapsulation structure
   guard let responseNode = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[1]").first
   else
@@ -114,25 +113,25 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   var schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
   // Correct schema
-  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: "integer") }
+  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: .integer) }
   else if path == "/video/get-saved-time"
   {
     schema.properties?.removeValue(forKey: "message")
-    schema.properties?["success"] = Schema(type: "integer")
+    schema.properties?["success"] = Schema(type: .integer)
   }
   else if path == "/video/get-all-saved-times"
   {
     let innerSchema = schema
-    let savedTimesSchema = Schema(type:"array", items: .item(innerSchema))
-    var parentSchema = Schema(type: "object", properties: ["savedTimes" : savedTimesSchema])
-    parentSchema.properties?["success"] = Schema(type: "integer")
+    let savedTimesSchema = Schema(type:.array, items: .item(innerSchema))
+    var parentSchema = Schema(type: .object, properties: ["savedTimes" : savedTimesSchema])
+    parentSchema.properties?["success"] = Schema(type: .integer)
     schema = parentSchema
   }
   else if path == "/video/save-time"
   {
-    let properties = ["success": Schema(type: "boolean"),
-                      "message": Schema(type: "string")]
-    schema = Schema(type: "object", properties: properties)
+    let properties = ["success": Schema(type: .boolean),
+                      "message": Schema(type: .string)]
+    schema = Schema(type: .object, properties: properties)
   }
   let nextMediaType = MediaType(schema: schema)
   let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? ""
@@ -160,24 +159,24 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     {
       let propertySegments = nextPropertyName.components(separatedBy: ".")
       let parentName = propertySegments[0]
-      let childProperty = Schema(type: "string", description: nextPropertyDescription)
+      let childProperty = Schema(type: .string, description: nextPropertyDescription)
       if propertiesDictionary.keys.contains(parentName)
       {
         propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
       }
       else
       {
-        let parentSchema = Schema(type: "object", properties: [propertySegments[1] : childProperty])
+        let parentSchema = Schema(type: .object, nullable: true, properties: [propertySegments[1] : childProperty])
         propertiesDictionary[propertySegments[0]] = parentSchema
       }
     }
     else
     {
-      propertiesDictionary[nextPropertyName] = Schema(type: "string", description: nextPropertyDescription)
+      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription)
     }
   }
   
-  return Schema(type: "object", properties: propertiesDictionary)
+  return Schema(type: .object, properties: propertiesDictionary)
 }
 
 
@@ -216,10 +215,10 @@ func getParameters(fromPath pathString: String) -> [String]
 
 func getResponseSchema(withChild pathSchema: Schema) -> Schema
 {
-  let arraySchema = Schema(type: "array", items: Schema.ItemsValue.item(pathSchema))
-  let extensionSchema = Schema(type: "object", properties: ["results" : arraySchema])
+  let arraySchema = Schema(type: .array, items: Schema.ItemsValue.item(pathSchema))
+  let extensionSchema = Schema(type: .object, properties: ["results" : arraySchema])
   
-  return Schema(type: "object", allOf: [Schema(ref: "#/components/schemas/Response"), extensionSchema])
+  return Schema(type: .object, allOf: [Schema(ref: "#/components/schemas/Response"), extensionSchema])
 }
 
 extension XMLNode
