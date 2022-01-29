@@ -24,7 +24,7 @@ guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") e
 do
 {
   let documentationXMLDocument = try XMLDocument(contentsOf: apiURL, options: [.documentTidyHTML])
-//  let components
+  
   
   // Grab the "Response" format to create the encapsulation structure
   guard let responseNode = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[1]").first
@@ -112,7 +112,28 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     operation.parameters?.append(nextParameter)
   }
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
-  let schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
+  var schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
+  // Correct schema
+  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: "integer") }
+  else if path == "/video/get-saved-time"
+  {
+    schema.properties?.removeValue(forKey: "message")
+    schema.properties?["success"] = Schema(type: "integer")
+  }
+  else if path == "/video/get-all-saved-times"
+  {
+    let innerSchema = schema
+    let savedTimesSchema = Schema(type:"array", items: .item(innerSchema))
+    var parentSchema = Schema(type: "object", properties: ["savedTimes" : savedTimesSchema])
+    parentSchema.properties?["success"] = Schema(type: "integer")
+    schema = parentSchema
+  }
+  else if path == "/video/save-time"
+  {
+    let properties = ["success": Schema(type: "boolean"),
+                      "message": Schema(type: "string")]
+    schema = Schema(type: "object", properties: properties)
+  }
   let nextMediaType = MediaType(schema: schema)
   let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? ""
   let nextResponse = Response(description: nextDescription, content: ["application/json": nextMediaType])
@@ -135,8 +156,27 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     else {
       continue
     }
-    propertiesDictionary[nextPropertyName] = Schema(type: "string", description: nextPropertyDescription)
+    if nextPropertyName.contains(".")
+    {
+      let propertySegments = nextPropertyName.components(separatedBy: ".")
+      let parentName = propertySegments[0]
+      let childProperty = Schema(type: "string", description: nextPropertyDescription)
+      if propertiesDictionary.keys.contains(parentName)
+      {
+        propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
+      }
+      else
+      {
+        let parentSchema = Schema(type: "object", properties: [propertySegments[1] : childProperty])
+        propertiesDictionary[propertySegments[0]] = parentSchema
+      }
+    }
+    else
+    {
+      propertiesDictionary[nextPropertyName] = Schema(type: "string", description: nextPropertyDescription)
+    }
   }
+  
   return Schema(type: "object", properties: propertiesDictionary)
 }
 
