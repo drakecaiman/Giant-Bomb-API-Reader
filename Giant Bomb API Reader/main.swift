@@ -94,7 +94,7 @@ do
     Tag(name: "Live", description: fillToken),
     Tag(name: "Bookmarks", description: fillToken)
   ]
-  openAPI.servers = [Server(url: URL(string: "http://www.giantbomb.com/api/")!)]
+  openAPI.servers = [Server(url: URL(string: "http://www.giantbomb.com/api/")!, description: fillToken)]
   let jsonEncoder = JSONEncoder()
   jsonEncoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes, .sortedKeys]
   guard let json = try? jsonEncoder.encode(openAPI)
@@ -273,7 +273,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     {
       let propertySegments = nextPropertyName.components(separatedBy: ".")
       let parentName = propertySegments[0]
-      let childProperty = Schema(type: .string, description: nextPropertyDescription)
+      let childProperty = Schema(type: ., description: nextPropertyDescription)
       if propertiesDictionary.keys.contains(parentName)
       {
         propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
