@@ -83,6 +83,15 @@ do
                                    version: "1.0.0"),
                         paths: paths,
                         components: components)
+  openAPI.tags = [
+    Tag(name: "General", description: ""),
+    Tag(name: "Wiki", description: ""),
+    Tag(name: "Search", description: ""),
+    Tag(name: "Reviews", description: ""),
+    Tag(name: "Videos", description: ""),
+    Tag(name: "Live", description: ""),
+    Tag(name: "Bookmarks", description: "")
+  ]
   openAPI.servers = [Server(url: URL(string: "http://www.giantbomb.com/api/")!)]
   let jsonEncoder = JSONEncoder()
   jsonEncoder.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes, .sortedKeys]
@@ -207,6 +216,38 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   operation.responses.responses!["200"] = nextResponse
   operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
+  
+  if path.starts(with: "/chat") ||
+      path == "/video/current-live"
+  {
+    operation.tags = ["Live"]
+  }
+  else if path == "/video/get-saved-time" ||
+            path == "/video/get-all-saved-times" ||
+            path == "/video/save-time"
+  {
+    operation.tags = ["Bookmarks"]
+  }
+  else if path == "/types"
+  {
+    operation.tags = ["General"]
+  }
+  else if path.contains("search")
+  {
+    operation.tags = ["Search"]
+  }
+  else if path.contains("review")
+  {
+    operation.tags = ["Reviews"]
+  }
+  else if path.starts(with: "/video")
+  {
+    operation.tags = ["Videos"]
+  }
+  else
+  {
+    operation.tags = ["Wiki"]
+  }
   
   return operation
 }

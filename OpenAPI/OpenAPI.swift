@@ -24,6 +24,7 @@ struct OpenAPI : Codable
   var servers : [Server]?
   var paths : [String : PathItem]
   var components : Components
+  var tags : [Tag]? = nil
 }
 
 struct Info : Codable
@@ -263,4 +264,11 @@ struct XML : Codable
   var prefix : String? = nil
   var attribute : Bool? = nil
   var wrapped :  Bool? = nil
+}
+
+struct Tag : Codable
+{
+  var name : String
+  var description : String? = nil
+//  var externalDocs : String
 }
