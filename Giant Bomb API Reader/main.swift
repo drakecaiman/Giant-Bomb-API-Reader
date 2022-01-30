@@ -125,6 +125,42 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     {
       nextParameter.schema = Schema(ref: "#/components/schemas/\(schemaName)")
     }
+    else if nextParameterName == "subscriber_only"
+    {
+      nextParameter.schema = Schema(type: .boolean)
+    }
+    else if nextParameterName == "page" ||
+              nextParameterName == "platforms" ||
+              nextParameterName == "game" ||
+              nextParameterName == "video_id" ||
+              nextParameterName == "time_to_save"
+    {
+      nextParameter.schema = Schema(type: .integer)
+    }
+    else if nextParameterName == "query"
+    {
+      nextParameter.schema = Schema(type: .string)
+    }
+    else if nextParameterName == "resources"
+    {
+      nextParameter.style = .form
+      nextParameter.explode = false
+      let resourceItemSchema = Schema(enumValues: [
+        "game",
+        "franchise",
+        "character",
+        "concept",
+        "object",
+        "location",
+        "person",
+        "company",
+        "video"
+      ],
+                                      type: .string)
+      let resourceSchema = Schema(type: .array, items: .item(resourceItemSchema))
+      nextParameter.schema = resourceSchema
+      
+    }
     operation.parameters?.append(nextParameter)
   }
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
