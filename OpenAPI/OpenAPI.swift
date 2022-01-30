@@ -125,8 +125,11 @@ struct Schema : Codable
   enum CodingKeys : String, CodingKey
   {
     case ref = "$ref"
+    case enumValues = "enum"
     case type
     case description
+    case minimum
+    case maximum
     case nullable
     case properties
     case items
@@ -154,9 +157,12 @@ struct Schema : Codable
 //  TODO: `init()` for straight `struct` instead of `ItemsValue` `enum` for `items`
 //  TODO: Find requirements from JSONSchema
 //  TODO: Properly do refs ("ref" property on objects? Protocols)
+  var enumValues : [String]? = nil
   var ref : String? = nil
   var type : JSONType? = nil
   var description : String? = nil
+  var minimum : Int? = nil
+  var maximum : Int? = nil
   var nullable : Bool? = nil
   var properties : [String : Schema]? = nil
   var items : ItemsValue? = nil
@@ -201,17 +207,34 @@ struct SecurityScheme : Codable
 
 struct Parameter : Codable
 {
+  enum ParameterStyle : String, Codable
+  {
+    case matrix
+    case label
+    case form
+    case simple
+    case spaceDelimited
+    case pipeDelimited
+    case deepObject
+  }
+  
   enum CodingKeys : String, CodingKey
   {
     case name
     case description
+    case explode
     case location = "in"
+    case schema
+    case style
     case isRequired = "required"
   }
   
   var name : String
+  var explode : Bool? = nil
   var description : String? = nil
   var location : APILocation
+  var schema : Schema? = nil
+  var style : ParameterStyle? = nil
   var isRequired : Bool
 }
 

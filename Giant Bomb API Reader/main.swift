@@ -15,6 +15,12 @@ let excludeResponseSchemaArray = ["/video/current-live",
                                   "/video/get-saved-time",
                                   "/video/get-all-saved-times",
                                   "/video/save-time"]
+let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], type: .string),
+                        "FieldList" : Schema(type: .array, items: .item(Schema(type:.string))),
+                        "Limit": Schema(type: .integer, minimum: 0, maximum: 100),
+                        "Offset": Schema(type: .integer),
+                        "Sort": Schema(type: .string),
+                        "Filter": Schema(type: .string)]
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
 {
@@ -35,7 +41,8 @@ do
   
   let securityScheme = SecurityScheme(type: .apiKey, name: "api_key", location: .query)
   guard let responseTableRowNodes = try? responseNode.nodes(forXPath: "tbody/tr") else { exit(EXIT_FAILURE) }
-  let components = Components(schemas: ["Response": getSchema(fromTableRowNodes: responseTableRowNodes)],
+  let responseSchema = ["Response": getSchema(fromTableRowNodes: responseTableRowNodes)]
+  let components = Components(schemas: parameterSchemas.merging(responseSchema, uniquingKeysWith: { (first,second) in first }),
                               securitySchemes: ["api_key" : securityScheme])
   
   guard let pathNodes = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[position()>1]")
@@ -107,11 +114,28 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     else {
       continue
     }
-    let nextParameter = Parameter(name: nextParameterName, description: nextParameterDescription, location: .query, isRequired: false)
+    var nextParameter = Parameter(name: nextParameterName, description: nextParameterDescription, location: .query, isRequired: false)
+    let schemaName = nextParameterName.capitalized.replacingOccurrences(of: "_", with: "")
+    if parameterSchemas.keys.contains(schemaName)
+    {
+      nextParameter.schema = Schema(ref: "#/components/schemas/\(schemaName)")
+    }
     operation.parameters?.append(nextParameter)
   }
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   var schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
+  if var fieldListParameter = operation.parameters?.first(where: {$0.name == "field_list"})
+  {
+    let fieldListSchema = Schema(enumValues: [String](pathSchema.properties!.keys), type: .string)
+    let overrideSchema = Schema(items: .item(fieldListSchema))
+    fieldListParameter.schema = Schema(allOf: [fieldListParameter.schema!, overrideSchema])
+    fieldListParameter.style = .form
+    fieldListParameter.explode = false
+    if let fieldListIndex = operation.parameters?.firstIndex(where: {$0.name == "field_list"})
+    {
+      operation.parameters?[fieldListIndex] = fieldListParameter
+    }
+  }
   // Correct schema
   if path == "/video/current-live" { schema.properties?["success"] = Schema(type: .integer) }
   else if path == "/video/get-saved-time"
