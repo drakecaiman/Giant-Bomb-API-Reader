@@ -41,8 +41,10 @@ do
   
   let securityScheme = SecurityScheme(type: .apiKey, name: "api_key", location: .query)
   guard let responseTableRowNodes = try? responseNode.nodes(forXPath: "tbody/tr") else { exit(EXIT_FAILURE) }
-  let responseSchema = ["Response": getSchema(fromTableRowNodes: responseTableRowNodes)]
-  let components = Components(schemas: parameterSchemas.merging(responseSchema, uniquingKeysWith: { (first,second) in first }),
+  var responseSchema = getSchema(fromTableRowNodes: responseTableRowNodes)
+  responseSchema.xml = XML(name: "response", wrapped: true)
+  let responseSchemaDictionary = ["Response" : responseSchema]
+  let components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
                               securitySchemes: ["api_key" : securityScheme])
   
   guard let pathNodes = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[position()>1]")
@@ -159,7 +161,10 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   }
   let nextMediaType = MediaType(schema: schema)
   let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? ""
-  let nextResponse = Response(description: nextDescription, content: ["application/json": nextMediaType])
+  let nextResponse = Response(description: nextDescription,
+                              content: ["application/json": nextMediaType,
+                                        "application/xml": nextMediaType,
+                                        "application/jsonp": nextMediaType])
   operation.responses.responses!["200"] = nextResponse
   operation.security = [["api_key": []]]
   

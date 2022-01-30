@@ -53,6 +53,7 @@ struct Operation : Codable
   var responses : Responses
   var deprecated : Bool? = nil
   var security : [[String : [String]]]? = nil
+  var tags : [String]? = nil
 }
 
 struct Components : Codable
@@ -111,8 +112,16 @@ extension Responses : Codable
 
 struct Response : Codable
 {
+  enum CodingKeys : String, CodingKey
+  {
+    case ref = "$ref"
+    case description
+    case content
+  }
+  
+  var ref : String? = nil
   var description : String
-  var content : [String : MediaType]
+  var content : [String : MediaType]? = nil
 }
 
 struct MediaType : Codable
@@ -132,8 +141,10 @@ struct Schema : Codable
     case maximum
     case nullable
     case properties
+    case title
     case items
     case allOf
+    case xml
   }
   enum ItemsValue : Codable
   {
@@ -165,8 +176,10 @@ struct Schema : Codable
   var maximum : Int? = nil
   var nullable : Bool? = nil
   var properties : [String : Schema]? = nil
+  var title : String? = nil
   var items : ItemsValue? = nil
   var allOf : [Schema]? = nil
+  var xml : XML? = nil
 }
 
 enum APILocation : String, Codable
@@ -241,4 +254,13 @@ struct Parameter : Codable
 struct SecurityRequirement
 {
 //  TODO: Use
+}
+
+struct XML : Codable
+{
+  var name : String? = nil
+  var namespace : String? = nil
+  var prefix : String? = nil
+  var attribute : Bool? = nil
+  var wrapped :  Bool? = nil
 }
