@@ -21,6 +21,8 @@ let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], 
                         "Offset": Schema(type: .integer),
                         "Sort": Schema(type: .string),
                         "Filter": Schema(type: .string)]
+//let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
+//                            Schema(properties: ["results": ]]
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
 {
@@ -167,6 +169,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
                                         "application/xml": nextMediaType,
                                         "application/jsonp": nextMediaType])
   operation.responses.responses!["200"] = nextResponse
+  operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
   
   return operation
