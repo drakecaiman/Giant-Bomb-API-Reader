@@ -8,6 +8,7 @@
 import Foundation
 import WebKit
 
+let fillToken = "##ENTER##"
 let urlDataDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 let pathParameterRegularExpression = try? NSRegularExpression(pattern: "(?<=\\{).*?(?=\\})", options: [])
 let descriptionTableRowXPath = "tbody/tr/td[strong[starts-with(text(),'Description:')]]/p"
@@ -15,12 +16,12 @@ let excludeResponseSchemaArray = ["/video/current-live",
                                   "/video/get-saved-time",
                                   "/video/get-all-saved-times",
                                   "/video/save-time"]
-let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], type: .string),
-                        "FieldList" : Schema(type: .array, items: .item(Schema(type:.string))),
-                        "Limit": Schema(type: .integer, minimum: 0, maximum: 100),
-                        "Offset": Schema(type: .integer),
-                        "Sort": Schema(type: .string),
-                        "Filter": Schema(type: .string)]
+let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], type: .string, description: fillToken),
+                        "FieldList" : Schema(type: .array, description: fillToken, items: .item(Schema(type:.string, description: fillToken))),
+                        "Limit": Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100),
+                        "Offset": Schema(type: .integer, description: fillToken),
+                        "Sort": Schema(type: .string, description: fillToken),
+                        "Filter": Schema(type: .string, description: fillToken)]
 //let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
 //                            Schema(properties: ["results": ]]
 
@@ -71,26 +72,27 @@ do
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     for nextParameter in getParameters(fromPath: apiPath)
     {
-      let pathParameterSchema = Schema(type: .string)
+      let pathParameterSchema = Schema(type: .string, description: fillToken)
       nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, schema: pathParameterSchema, isRequired: true))
     }
-    let nextPathItem = PathItem(get: nextOperation)
+    let nextPathItem = PathItem(summary: fillToken, description: fillToken, get: nextOperation)
     paths[apiPath] = nextPathItem
   }
   
   var openAPI = OpenAPI(openapi: "3.0.2",
                         info: Info(title: "Giant Bomb API",
-                                   version: "1.0.0"),
+                                   description: fillToken,
+                                   version: "0.7"),
                         paths: paths,
                         components: components)
   openAPI.tags = [
-    Tag(name: "General", description: ""),
-    Tag(name: "Wiki", description: ""),
-    Tag(name: "Search", description: ""),
-    Tag(name: "Reviews", description: ""),
-    Tag(name: "Videos", description: ""),
-    Tag(name: "Live", description: ""),
-    Tag(name: "Bookmarks", description: "")
+    Tag(name: "General", description: fillToken),
+    Tag(name: "Wiki", description: fillToken),
+    Tag(name: "Search", description: fillToken),
+    Tag(name: "Reviews", description: fillToken),
+    Tag(name: "Videos", description: fillToken),
+    Tag(name: "Live", description: fillToken),
+    Tag(name: "Bookmarks", description: fillToken)
   ]
   openAPI.servers = [Server(url: URL(string: "http://www.giantbomb.com/api/")!)]
   let jsonEncoder = JSONEncoder()
@@ -110,7 +112,7 @@ catch
 
 func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Operation
 {
-  var operation = Operation(parameters: [], responses: Responses(responses: [String:Response]()))
+  var operation = Operation(description: fillToken, parameters: [], responses: Responses(responses: [String:Response]()), summary: fillToken)
   let fieldsHeaderTableRowXPath = "td/strong[text() = 'Fields']"
   let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[not(preceding-sibling::tr/\(fieldsHeaderTableRowXPath)) and not(\(fieldsHeaderTableRowXPath))]"
   let fieldTableRowXPath = "tbody/tr[td[strong[text() = 'Fields']]]//following-sibling::tr"
@@ -136,7 +138,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     }
     else if nextParameterName == "subscriber_only"
     {
-      nextParameter.schema = Schema(type: .boolean)
+      nextParameter.schema = Schema(type: .boolean, description: fillToken)
     }
     else if nextParameterName == "page" ||
               nextParameterName == "platforms" ||
@@ -144,11 +146,11 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
               nextParameterName == "video_id" ||
               nextParameterName == "time_to_save"
     {
-      nextParameter.schema = Schema(type: .integer)
+      nextParameter.schema = Schema(type: .integer, description: fillToken)
     }
     else if nextParameterName == "query"
     {
-      nextParameter.schema = Schema(type: .string)
+      nextParameter.schema = Schema(type: .string, description: fillToken)
     }
     else if nextParameterName == "resources"
     {
@@ -165,8 +167,9 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
         "company",
         "video"
       ],
-                                      type: .string)
-      let resourceSchema = Schema(type: .array, items: .item(resourceItemSchema))
+                                      type: .string,
+                                      description: fillToken)
+      let resourceSchema = Schema(type: .array, description: fillToken, items: .item(resourceItemSchema))
       nextParameter.schema = resourceSchema
       
     }
@@ -187,32 +190,33 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     }
   }
   // Correct schema
-  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: .integer) }
+  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: .integer, description: fillToken) }
   else if path == "/video/get-saved-time"
   {
     schema.properties?.removeValue(forKey: "message")
-    schema.properties?["success"] = Schema(type: .integer)
+    schema.properties?["success"] = Schema(type: .integer, description: fillToken)
   }
   else if path == "/video/get-all-saved-times"
   {
     let innerSchema = schema
-    let savedTimesSchema = Schema(type:.array, items: .item(innerSchema))
+    let savedTimesSchema = Schema(type:.array, description: fillToken, items: .item(innerSchema))
     var parentSchema = Schema(type: .object, properties: ["savedTimes" : savedTimesSchema])
-    parentSchema.properties?["success"] = Schema(type: .integer)
+    parentSchema.properties?["success"] = Schema(type: .integer, description: fillToken)
     schema = parentSchema
   }
   else if path == "/video/save-time"
   {
-    let properties = ["success": Schema(type: .boolean),
-                      "message": Schema(type: .string)]
-    schema = Schema(type: .object, properties: properties)
+    let properties = ["success": Schema(type: .boolean, description: fillToken),
+                      "message": Schema(type: .string, description: fillToken)]
+    schema = Schema(type: .object, description: fillToken, properties: properties)
   }
   let nextMediaType = MediaType(schema: schema)
-  let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? ""
-  let nextResponse = Response(description: nextDescription,
+  let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? fillToken
+  let nextResponse = Response(description: fillToken,
                               content: ["application/json": nextMediaType,
                                         "application/xml": nextMediaType,
                                         "application/jsonp": nextMediaType])
+  operation.summary = nextDescription
   operation.responses.responses!["200"] = nextResponse
   operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
@@ -276,7 +280,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
       }
       else
       {
-        let parentSchema = Schema(type: .object, nullable: true, properties: [propertySegments[1] : childProperty])
+        let parentSchema = Schema(type: .object, description: fillToken, nullable: true, properties: [propertySegments[1] : childProperty])
         propertiesDictionary[propertySegments[0]] = parentSchema
       }
     }
@@ -286,7 +290,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     }
   }
   
-  return Schema(type: .object, properties: propertiesDictionary)
+  return Schema(type: .object, description: fillToken, properties: propertiesDictionary)
 }
 
 
@@ -352,5 +356,6 @@ extension String
       .replacingOccurrences(of: "\n", with: "<br />")
       .replacingOccurrences(of: "\t", with: "")
       .replacingOccurrences(of: "•", with: "")
+      .replacingOccurrences(of: "NEED DESCRIPTION", with: fillToken)
   }
 }

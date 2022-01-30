@@ -50,10 +50,12 @@ struct PathItem : Codable
 
 struct Operation : Codable
 {
+  var deprecated : Bool? = nil
+  var description : String? = nil
   var parameters : [Parameter]? = nil
   var responses : Responses
-  var deprecated : Bool? = nil
   var security : [[String : [String]]]? = nil
+  var summary : String? = nil
   var tags : [String]? = nil
 }
 
