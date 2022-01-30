@@ -69,7 +69,8 @@ do
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     for nextParameter in getParameters(fromPath: apiPath)
     {
-      nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, isRequired: true))
+      let pathParameterSchema = Schema(type: .string)
+      nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, schema: pathParameterSchema, isRequired: true))
     }
     let nextPathItem = PathItem(get: nextOperation)
     paths[apiPath] = nextPathItem
