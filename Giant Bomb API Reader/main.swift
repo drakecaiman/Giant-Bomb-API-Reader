@@ -223,12 +223,17 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     schema = Schema(type: .object, description: fillToken, properties: properties)
   }
   let nextMediaType = MediaType(schema: schema)
-  let nextDescription = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? fillToken
+  let descriptionTableViewStringValue = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? fillToken
+  let descriptionComponents = descriptionTableViewStringValue.components(separatedBy: "<br />")
+  operation.summary = descriptionComponents[0]
+  if descriptionComponents.count > 1
+  {
+    operation.description = ([fillToken] + descriptionComponents[1...]).joined(separator: "<br />")
+  }
   let nextResponse = Response(description: fillToken,
                               content: ["application/json": nextMediaType,
                                         "application/xml": nextMediaType,
                                         "application/jsonp": nextMediaType])
-  operation.summary = nextDescription
   operation.responses.responses!["200"] = nextResponse
   operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
