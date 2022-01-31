@@ -114,7 +114,7 @@ do
     Tag(name: "Wiki", description: fillToken),
     Tag(name: "Search", description: fillToken),
     Tag(name: "Reviews", description: fillToken),
-    Tag(name: "Editorial", description: fillToken),
+    Tag(name: "Videos", description: fillToken),
     Tag(name: "Live", description: fillToken),
     Tag(name: "Bookmarks", description: fillToken)
   ]
@@ -257,7 +257,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   {
     operation.tags = ["Bookmarks"]
   }
-  else if path == "/types"
+  else if path == "/types" ||
+            path.starts(with: "/promo")
   {
     operation.tags = ["General"]
   }
@@ -269,10 +270,9 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   {
     operation.tags = ["Reviews"]
   }
-  else if path.starts(with: "/video") ||
-            path.starts(with: "/promo")
+  else if path.starts(with: "/video")
   {
-    operation.tags = ["Editorial"]
+    operation.tags = ["Videos"]
   }
   else
   {
