@@ -21,7 +21,21 @@ let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], 
                         "Limit": Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100),
                         "Offset": Schema(type: .integer, description: fillToken),
                         "Sort": Schema(type: .string, description: fillToken),
-                        "Filter": Schema(type: .string, description: fillToken)]
+                        "Filter": Schema(type: .string, description: fillToken),
+                        "ResourceType": Schema(enumValues: [
+                          "game",
+                          "franchise",
+                          "character",
+                          "concept",
+                          "object",
+                          "location",
+                          "person",
+                          "company",
+                          "video"
+                        ],
+                                               type: .string,
+                                               description: fillToken)]
+
 //let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
 //                            Schema(properties: ["results": ]]
 
@@ -156,20 +170,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     {
       nextParameter.style = .form
       nextParameter.explode = false
-      let resourceItemSchema = Schema(enumValues: [
-        "game",
-        "franchise",
-        "character",
-        "concept",
-        "object",
-        "location",
-        "person",
-        "company",
-        "video"
-      ],
-                                      type: .string,
-                                      description: fillToken)
-      let resourceSchema = Schema(type: .array, description: fillToken, items: .item(resourceItemSchema))
+      let resourceSchema = Schema(type: .array, description: fillToken, items: .item(Schema(ref: "#/components/schemas/ResourceType")))
       nextParameter.schema = resourceSchema
       
     }
@@ -283,6 +284,12 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
         let parentSchema = Schema(type: .object, description: fillToken, nullable: true, properties: [propertySegments[1] : childProperty])
         propertiesDictionary[propertySegments[0]] = parentSchema
       }
+    }
+    else if nextPropertyName == "resource_type"
+    {
+      let resourceTypeSchema = Schema(allOf: [Schema(ref: "#/components/schemas/ResourceType"),
+                                              Schema(description: nextPropertyDescription)])
+      propertiesDictionary[nextPropertyName] = resourceTypeSchema
     }
     else
     {
