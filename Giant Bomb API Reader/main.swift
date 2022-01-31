@@ -273,7 +273,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     {
       let propertySegments = nextPropertyName.components(separatedBy: ".")
       let parentName = propertySegments[0]
-      let childProperty = Schema(type: ., description: nextPropertyDescription)
+      let childProperty = Schema(type: .string, description: nextPropertyDescription, example: "##WRONG TYPE##")
       if propertiesDictionary.keys.contains(parentName)
       {
         propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
@@ -286,7 +286,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     }
     else
     {
-      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription)
+      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription, example: "##WRONG TYPE##")
     }
   }
   

@@ -140,6 +140,7 @@ struct Schema : Codable
     case enumValues = "enum"
     case type
     case description
+    case example
     case minimum
     case maximum
     case nullable
@@ -175,6 +176,8 @@ struct Schema : Codable
   var ref : String? = nil
   var type : JSONType? = nil
   var description : String? = nil
+//  TODO: Should be Any, find way to define any codable
+  var example : String? = nil
   var minimum : Int? = nil
   var maximum : Int? = nil
   var nullable : Bool? = nil
