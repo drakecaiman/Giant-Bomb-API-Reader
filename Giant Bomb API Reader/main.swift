@@ -176,6 +176,14 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
       nextParameter.schema = resourceSchema
       
     }
+    
+    if path == "/search",
+       nextParameterName == "limit"
+    {
+      let searchLimitSchema = Schema(allOf: [nextParameter.schema!,
+                                             Schema(maximum: 10)])
+      nextParameter.schema = searchLimitSchema
+    }
     operation.parameters?.append(nextParameter)
   }
   let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
