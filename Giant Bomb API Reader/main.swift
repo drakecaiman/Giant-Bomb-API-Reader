@@ -83,9 +83,10 @@ do
       exit(EXIT_FAILURE)
     }
     let nextSummary = try? nextPathNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString
-    let apiPath = getAPIPath(fromURL: url)
+    var apiPath = getAPIPath(fromURL: url)
     var nextOperation = getOperation(fromTableNode: nextPathNode, forPath: apiPath)
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
+    if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
     for nextParameter in getParameters(fromPath: apiPath)
     {
       let pathParameterSchema = Schema(type: .string, description: fillToken)
