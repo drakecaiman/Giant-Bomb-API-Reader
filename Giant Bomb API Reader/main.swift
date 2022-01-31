@@ -9,6 +9,7 @@ import Foundation
 import WebKit
 
 let fillToken = "##ENTER##"
+let typeToken = "##WRONG TYPE##"
 let urlDataDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 let pathParameterRegularExpression = try? NSRegularExpression(pattern: "(?<=\\{).*?(?=\\})", options: [])
 let descriptionTableRowXPath = "tbody/tr/td[strong[starts-with(text(),'Description:')]]/p"
@@ -60,6 +61,7 @@ do
   guard let responseTableRowNodes = try? responseNode.nodes(forXPath: "tbody/tr") else { exit(EXIT_FAILURE) }
   var responseSchema = getSchema(fromTableRowNodes: responseTableRowNodes)
   responseSchema.xml = XML(name: "response", wrapped: true)
+  responseSchema.properties?["version"] = Schema(type:.string, description: fillToken, example: typeToken)
   let responseSchemaDictionary = ["Response" : responseSchema]
   let components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
                               securitySchemes: ["api_key" : securityScheme])
@@ -274,7 +276,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     {
       let propertySegments = nextPropertyName.components(separatedBy: ".")
       let parentName = propertySegments[0]
-      let childProperty = Schema(type: .string, description: nextPropertyDescription, example: "##WRONG TYPE##")
+      let childProperty = Schema(type: .string, description: nextPropertyDescription, example: typeToken)
       if propertiesDictionary.keys.contains(parentName)
       {
         propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
@@ -293,7 +295,7 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
     }
     else
     {
-      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription, example: "##WRONG TYPE##")
+      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription, example: typeToken)
     }
   }
   
