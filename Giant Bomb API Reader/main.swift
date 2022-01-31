@@ -87,6 +87,11 @@ do
     var nextOperation = getOperation(fromTableNode: nextPathNode, forPath: apiPath)
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
+    if apiPath == "/types"
+    {
+      let formatSchema = Schema(ref: "#/components/schemas/Format")
+      nextOperation.parameters?.append(Parameter(name: "format", description: "The data format of the response takes either xml, json, or jsonp.", location: .query, schema: formatSchema, isRequired: false))
+    }
     for nextParameter in getParameters(fromPath: apiPath)
     {
       let pathParameterSchema = Schema(type: .string, description: fillToken)
