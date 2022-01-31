@@ -25,6 +25,13 @@ struct OpenAPI : Codable
   var paths : [String : PathItem]
   var components : Components
   var tags : [Tag]? = nil
+  var externalDocs : ExternalDocumentation? = nil
+}
+
+struct ExternalDocumentation : Codable
+{
+  var description : String? = nil
+  var url : URL
 }
 
 struct Info : Codable
@@ -52,6 +59,7 @@ struct Operation : Codable
 {
   var deprecated : Bool? = nil
   var description : String? = nil
+  var externalDocs : ExternalDocumentation? = nil
   var parameters : [Parameter]? = nil
   var responses : Responses
   var security : [[String : [String]]]? = nil

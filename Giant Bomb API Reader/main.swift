@@ -10,6 +10,7 @@ import WebKit
 
 let fillToken = "##ENTER##"
 let typeToken = "##WRONG TYPE##"
+let docURLString = "https://www.giantbomb.com/api/documentation/"
 let urlDataDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
 let pathParameterRegularExpression = try? NSRegularExpression(pattern: "(?<=\\{).*?(?=\\})", options: [])
 let descriptionTableRowXPath = "tbody/tr/td[strong[starts-with(text(),'Description:')]]/p"
@@ -106,7 +107,8 @@ do
                                    description: fillToken,
                                    version: "0.7"),
                         paths: paths,
-                        components: components)
+                        components: components,
+                        externalDocs: ExternalDocumentation(description: fillToken, url: URL(string: docURLString)!))
   openAPI.tags = [
     Tag(name: "General", description: fillToken),
     Tag(name: "Wiki", description: fillToken),
@@ -242,6 +244,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   operation.responses.responses!["200"] = nextResponse
   operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
+  operation.externalDocs = ExternalDocumentation(description: fillToken, url: URL(string: "\(docURLString)#ADD")!)
   
   if path.starts(with: "/chat") ||
       path == "/video/current-live"
