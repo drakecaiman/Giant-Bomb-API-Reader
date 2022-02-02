@@ -37,6 +37,33 @@ let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], 
                         ],
                                                type: .string,
                                                description: fillToken)]
+let singular = [
+  "/accessories" : "/accessory/{guid}",
+  "/characters" : "/character/{guid}",
+  "/chats" : "/chat/{guid}",
+  "/companies" : "/company/{guid}",
+  "/concepts" : "/concept/{guid}",
+  "/dlcs" : "/dlc/{guid}",
+  "/franchises" : "/franchise/{guid}",
+  "/games" : "/game/{guid}",
+  "/game_ratings" : "/game_rating/{guid}",
+  "/genres" : "/genre/{guid}",
+  "/locations" : "/location/{guid}",
+  "/objects" : "/object/{guid}",
+  "/people" : "/person/{guid}",
+  "/platforms" : "/platform/{guid}",
+  "/promos" : "/promo/{guid}",
+  "/rating_boards" : "/rating_board/{guid}",
+  "/regions" : "/region/{guid}",
+  "/releases" : "/release/{guid}",
+  "/reviews" : "/review/{guid}",
+  "/themes" : "/theme/{guid}",
+  "/user_reviews" : "/user_review/{guid}",
+  "/videos" : "/video/{guid}",
+  "/video_types" : "/video_type/{id}",
+  "/video_categories/{id}" : "/video_category/{id}",
+  "/video_shows" : "/video_show/{guid}"
+]
 
 //let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
 //                            Schema(properties: ["results": ]]
@@ -64,7 +91,7 @@ do
   responseSchema.xml = XML(name: "response", wrapped: true)
   responseSchema.properties?["version"] = Schema(type:.string, description: fillToken, example: typeToken)
   let responseSchemaDictionary = ["Response" : responseSchema]
-  let components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
+  var components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
                               securitySchemes: ["api_key" : securityScheme])
   
   guard let pathNodes = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[position()>1]")
@@ -74,6 +101,7 @@ do
     exit(EXIT_FAILURE)
   }
   var paths = [String : PathItem]()
+  var extraSchema = [ String : Schema ]()
   for nextPathNode in pathNodes
   {
     guard let urlRowString = try? nextPathNode.nodes(forXPath: "tbody/tr[1]").first?.stringValue,
@@ -86,6 +114,43 @@ do
     let nextSummary = try? nextPathNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString
     var apiPath = getAPIPath(fromURL: url)
     var nextOperation = getOperation(fromTableNode: nextPathNode, forPath: apiPath)
+    let schemaName : String
+    let nextSchema = nextOperation.responses.responses!["200"]!.content!["application/json"]!.schema
+    if [String](singular.keys).contains(apiPath)
+    {
+      schemaName = singular[apiPath]!.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")
+      components.schemas?[schemaName] = nextSchema
+    }
+    else if [String](singular.values).contains(apiPath)
+    {
+      schemaName = "\(apiPath.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")).Detail"
+      extraSchema[schemaName] = nextSchema
+    }
+    else
+    {
+      let pathName = apiPath.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")
+      schemaName = pathName.hasSuffix("s") ? String(pathName.dropLast()) : pathName
+      components.schemas?[schemaName] = nextSchema
+    }
+    
+    let envelope : Schema
+    if !excludeResponseSchemaArray.contains(apiPath)
+    {
+      envelope = getResponseSchema(withChild: Schema(ref: "#/components/schemas/\(schemaName)"), isSingular: [String](singular.values).contains(apiPath))
+    }
+    else
+    {
+      envelope = Schema(ref: "#/components/schemas/\(schemaName)")
+    }
+    
+    nextOperation.responses.responses?["200"]?.content?["application/json"]?.schema = envelope
+    let content = nextOperation.responses.responses?["200"]?.content?["application/json"]
+    nextOperation.responses.responses?["200"]?.content?["application/xml"] = content
+    nextOperation.responses.responses?["200"]?.content?["application/jsonp"] = content
+    // Response(ref: "#/components/responses/InvalidAPIKey")
+    let response = nextOperation.responses.responses?["200"]
+    nextOperation.responses.responses?["401"] = response
+    
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
     if apiPath == "/types"
@@ -100,6 +165,28 @@ do
     }
     let nextPathItem = PathItem(summary: fillToken, description: fillToken, get: nextOperation)
     paths[apiPath] = nextPathItem
+  }
+  
+  //Build detailed schema
+  for (nextSchemaName, nextSchema) in extraSchema
+  {
+    let baseSchemaName = nextSchemaName.components(separatedBy: ".")[0]
+    
+    let baseSchema = components.schemas![baseSchemaName]!
+    let baseSchemaProperties = [String](baseSchema.properties!.keys).sorted()
+    let differenceProperties = [String](nextSchema.properties!.keys).sorted().difference(from: baseSchemaProperties)
+    let diffKeys : [String] = differenceProperties.compactMap({
+      change in
+      switch change
+      {
+      case let .insert(_, key, _):
+        return key
+      default:
+        return nil
+      }
+    })
+    let extraProperties = nextSchema.properties!.filter { diffKeys.contains($0.key) }
+    components.schemas?[nextSchemaName] = Schema(allOf:[Schema(ref: "#/components/schemas/\(baseSchemaName)"), Schema(properties: extraProperties)])
   }
   
   var openAPI = OpenAPI(openapi: "3.0.2",
@@ -194,11 +281,10 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     }
     operation.parameters?.append(nextParameter)
   }
-  let pathSchema = getSchema(fromTableRowNodes: fieldTableRowNodes)
-  var schema = excludeResponseSchemaArray.contains(path) ? pathSchema : getResponseSchema(withChild: pathSchema)
+  var schema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   if var fieldListParameter = operation.parameters?.first(where: {$0.name == "field_list"})
   {
-    let fieldListSchema = Schema(enumValues: [String](pathSchema.properties!.keys), type: .string)
+    let fieldListSchema = Schema(enumValues: [String](schema.properties!.keys.sorted()), type: .string)
     let overrideSchema = Schema(items: .item(fieldListSchema))
     fieldListParameter.schema = Schema(allOf: [fieldListParameter.schema!, overrideSchema])
     fieldListParameter.style = .form
@@ -238,11 +324,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     operation.description = ([fillToken] + descriptionComponents[1...]).joined(separator: "<br />")
   }
   let nextResponse = Response(description: fillToken,
-                              content: ["application/json": nextMediaType,
-                                        "application/xml": nextMediaType,
-                                        "application/jsonp": nextMediaType])
+                              content: ["application/json": nextMediaType])
   operation.responses.responses!["200"] = nextResponse
-  operation.responses.responses!["401"] = nextResponse// Response(ref: "#/components/responses/InvalidAPIKey")
   operation.security = [["api_key": []]]
   operation.externalDocs = ExternalDocumentation(description: fillToken, url: URL(string: "\(docURLString)#ADD")!)
   
@@ -359,10 +442,12 @@ func getParameters(fromPath pathString: String) -> [String]
   return parameters
 }
 
-func getResponseSchema(withChild pathSchema: Schema) -> Schema
+func getResponseSchema(withChild pathSchema: Schema, isSingular: Bool = false) -> Schema
 {
-  let arraySchema = Schema(type: .array, items: Schema.ItemsValue.item(pathSchema))
-  let extensionSchema = Schema(type: .object, properties: ["results" : arraySchema])
+  let resultSchema = isSingular ?
+  pathSchema :
+  Schema(type: .array, items: Schema.ItemsValue.item(pathSchema))
+  let extensionSchema = Schema(type: .object, properties: ["results" : resultSchema])
   
   return Schema(type: .object, allOf: [Schema(ref: "#/components/schemas/Response"), extensionSchema])
 }
