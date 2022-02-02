@@ -27,6 +27,13 @@ let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], 
                         "Offset": Schema(type: .integer, description: fillToken),
                         "Sort": Schema(type: .string, description: fillToken, pattern: sortQueryRegEx),
                         "Filter": Schema(type: .string, description: fillToken, pattern: filterQueryRegEx),
+                        "SubscriberOnly": Schema(type: .boolean, description: fillToken),
+                        "Page": Schema(type: .integer, description: fillToken),
+                        "VideoId": Schema(type: .integer, description: fillToken),
+                        "TimeToSave": Schema(type: .integer, description: fillToken),
+                        "GameId": Schema(type: .integer, description: fillToken),
+                        "PlatformId": Schema(type: .integer, description: fillToken),
+                        "Query": Schema(type: .string, description: fillToken),
                         "ResourceType": Schema(enumValues: [
                           "game",
                           "franchise",
@@ -268,21 +275,11 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     {
       nextParameter.schema = Schema(ref: "#/components/schemas/\(schemaName)")
     }
-    else if nextParameterName == "subscriber_only"
+    else if schemaName == "Platforms" ||
+              schemaName == "Games"
     {
-      nextParameter.schema = Schema(type: .boolean, description: fillToken)
-    }
-    else if nextParameterName == "page" ||
-              nextParameterName == "platforms" ||
-              nextParameterName == "game" ||
-              nextParameterName == "video_id" ||
-              nextParameterName == "time_to_save"
-    {
-      nextParameter.schema = Schema(type: .integer, description: fillToken)
-    }
-    else if nextParameterName == "query"
-    {
-      nextParameter.schema = Schema(type: .string, description: fillToken)
+      let idSchemaName = "\(schemaName.dropLast())Id"
+      nextParameter.schema = Schema(ref: "#/components/schemas/\(idSchemaName)")
     }
     else if nextParameterName == "resources"
     {
