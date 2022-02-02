@@ -153,6 +153,7 @@ struct Schema : Codable
     case example
     case minimum
     case maximum
+    case pattern
     case nullable
     case properties
     case title
@@ -192,6 +193,7 @@ struct Schema : Codable
   var example : String? = nil
   var minimum : Int? = nil
   var maximum : Int? = nil
+  var pattern : String? = nil
   var nullable : Bool? = nil
   var properties : [String : Schema]? = nil
   var title : String? = nil
@@ -260,6 +262,7 @@ struct Parameter : Codable
     case schema
     case style
     case isRequired = "required"
+    case allowReserved
   }
   
   var name : String
@@ -269,6 +272,7 @@ struct Parameter : Codable
   var schema : Schema? = nil
   var style : ParameterStyle? = nil
   var isRequired : Bool
+  var allowReserved : Bool? = nil
 }
 
 struct SecurityRequirement

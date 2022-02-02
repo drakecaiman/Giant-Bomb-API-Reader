@@ -18,12 +18,15 @@ let excludeResponseSchemaArray = ["/video/current-live",
                                   "/video/get-saved-time",
                                   "/video/get-all-saved-times",
                                   "/video/save-time"]
+let sortQueryRegEx = #"^\w+:((asc)|(desc))$"#
+//!!!: named and numbered regex subroutines not working in apps
+let filterQueryRegEx = #"^((\w+:((\w+)|(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}))),?)+$"#
 let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], type: .string, description: fillToken),
                         "FieldList" : Schema(type: .array, description: fillToken, items: .item(Schema(type:.string, description: fillToken))),
                         "Limit": Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100),
                         "Offset": Schema(type: .integer, description: fillToken),
-                        "Sort": Schema(type: .string, description: fillToken),
-                        "Filter": Schema(type: .string, description: fillToken),
+                        "Sort": Schema(type: .string, description: fillToken, pattern: sortQueryRegEx),
+                        "Filter": Schema(type: .string, description: fillToken, pattern: filterQueryRegEx),
                         "ResourceType": Schema(enumValues: [
                           "game",
                           "franchise",
@@ -197,7 +200,7 @@ do
     let extraProperties = nextSchema.properties!.filter { diffKeys.contains($0.key) }
     components.schemas?[nextSchemaName] = Schema(allOf:[Schema(ref: "#/components/schemas/\(baseSchemaName)"), Schema(properties: extraProperties)])
   }
-  //Build scearch field_list
+  //Build search field_list
   let searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
                                               .flatMap { $0.properties!.keys })).sorted()
   let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ $0.name == "field_list" }!
@@ -287,7 +290,11 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
       nextParameter.explode = false
       let resourceSchema = Schema(type: .array, description: fillToken, items: .item(Schema(ref: "#/components/schemas/ResourceType")))
       nextParameter.schema = resourceSchema
-      
+    }
+    else if nextParameterName == "sort" ||
+              nextParameterName == "filter"
+    {
+      nextParameter.allowReserved = true
     }
     
     if path == "/search",
