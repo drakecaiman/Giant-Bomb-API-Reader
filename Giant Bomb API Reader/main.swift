@@ -64,6 +64,15 @@ let singular = [
   "/video_categories/{id}" : "/video_category/{id}",
   "/video_shows" : "/video_show/{guid}"
 ]
+let searchSchemaList = ["Game",
+                  "Franchise",
+                  "Character",
+                  "Concept",
+                  "Object",
+                  "Location",
+                  "Person",
+                  "Company",
+                  "Video"]
 
 //let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
 //                            Schema(properties: ["results": ]]
@@ -188,7 +197,16 @@ do
     let extraProperties = nextSchema.properties!.filter { diffKeys.contains($0.key) }
     components.schemas?[nextSchemaName] = Schema(allOf:[Schema(ref: "#/components/schemas/\(baseSchemaName)"), Schema(properties: extraProperties)])
   }
-  
+  //Build scearch field_list
+  let searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
+                                              .flatMap { $0.properties!.keys })).sorted()
+  let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ $0.name == "field_list" }!
+  if case var .item(item) = paths["/search"]!.get!.parameters![fieldListParameterIndex].schema?.allOf?[1].items
+  {
+    item.enumValues?.append(contentsOf: searchFieldList)
+    item.enumValues?.sort()
+    paths["/search"]!.get!.parameters![fieldListParameterIndex].schema?.allOf?[1].items = .item(item)
+  }
   var openAPI = OpenAPI(openapi: "3.0.2",
                         info: Info(title: "Giant Bomb API",
                                    description: fillToken,
@@ -314,6 +332,13 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     let properties = ["success": Schema(type: .boolean, description: fillToken),
                       "message": Schema(type: .string, description: fillToken)]
     schema = Schema(type: .object, description: fillToken, properties: properties)
+  }
+  else if path == "/search"
+  {
+    let innerSchema = schema
+    let schemaRefList = searchSchemaList.map { "#/components/schemas/\($0)" }.map { Schema(ref: $0 ) }
+    let parentSchema = Schema(allOf: [Schema(oneOf: schemaRefList), innerSchema])
+    schema = parentSchema
   }
   let nextMediaType = MediaType(schema: schema)
   let descriptionTableViewStringValue = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? fillToken

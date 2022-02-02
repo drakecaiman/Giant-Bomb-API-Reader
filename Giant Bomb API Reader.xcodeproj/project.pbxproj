@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AE73C8C127A93C86007481F8 /* OpenAPIBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE73C8C027A93C86007481F8 /* OpenAPIBuilder.swift */; };
 		AEFA39C027964177000788D1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFA39BF27964177000788D1 /* main.swift */; };
 		AEFA39C827988A80000788D1 /* OpenAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEFA39C727988A80000788D1 /* OpenAPI.swift */; };
 /* End PBXBuildFile section */
@@ -24,6 +25,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AE73C8C027A93C86007481F8 /* OpenAPIBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAPIBuilder.swift; sourceTree = "<group>"; };
 		AEFA39BC27964177000788D1 /* Giant Bomb API Reader */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Giant Bomb API Reader"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEFA39BF27964177000788D1 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		AEFA39C727988A80000788D1 /* OpenAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAPI.swift; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 			isa = PBXGroup;
 			children = (
 				AEFA39C727988A80000788D1 /* OpenAPI.swift */,
+				AE73C8C027A93C86007481F8 /* OpenAPIBuilder.swift */,
 			);
 			path = OpenAPI;
 			sourceTree = "<group>";
@@ -131,6 +134,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AE73C8C127A93C86007481F8 /* OpenAPIBuilder.swift in Sources */,
 				AEFA39C827988A80000788D1 /* OpenAPI.swift in Sources */,
 				AEFA39C027964177000788D1 /* main.swift in Sources */,
 			);

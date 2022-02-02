@@ -158,6 +158,8 @@ struct Schema : Codable
     case title
     case items
     case allOf
+    case anyOf
+    case oneOf
     case xml
   }
   enum ItemsValue : Codable
@@ -194,7 +196,9 @@ struct Schema : Codable
   var properties : [String : Schema]? = nil
   var title : String? = nil
   var items : ItemsValue? = nil
+  var anyOf : [Schema]? = nil
   var allOf : [Schema]? = nil
+  var oneOf : [Schema]? = nil
   var xml : XML? = nil
 }
 
