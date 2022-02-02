@@ -17,7 +17,9 @@ enum JSONType : String, Codable
   case array
 }
 
-struct OpenAPI : Codable
+protocol OpenAPIObject : Codable {}
+
+struct OpenAPI : OpenAPIObject
 {
   var openapi : String
   var info : Info
