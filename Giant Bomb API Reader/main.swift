@@ -21,32 +21,36 @@ let excludeResponseSchemaArray = ["/video/current-live",
 let sortQueryRegEx = #"^\w+:((asc)|(desc))$"#
 //!!!: named and numbered regex subroutines not working in apps
 let filterQueryRegEx = #"^((\w+:((\w+)|(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}))),?)+$"#
-let parameterSchemas = ["Format" : Schema(enumValues: ["xml", "json", "jsonp"], type: .string, description: fillToken),
-                        "FieldList" : Schema(type: .array, description: fillToken, items: .item(Schema(type:.string, description: fillToken))),
-                        "Limit": Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100),
-                        "Offset": Schema(type: .integer, description: fillToken),
-                        "Sort": Schema(type: .string, description: fillToken, pattern: sortQueryRegEx),
-                        "Filter": Schema(type: .string, description: fillToken, pattern: filterQueryRegEx),
-                        "SubscriberOnly": Schema(type: .boolean, description: fillToken),
-                        "Page": Schema(type: .integer, description: fillToken),
-                        "VideoId": Schema(type: .integer, description: fillToken),
-                        "TimeToSave": Schema(type: .integer, description: fillToken),
-                        "GameId": Schema(type: .integer, description: fillToken),
-                        "PlatformId": Schema(type: .integer, description: fillToken),
-                        "Query": Schema(type: .string, description: fillToken),
-                        "ResourceType": Schema(enumValues: [
-                          "game",
-                          "franchise",
-                          "character",
-                          "concept",
-                          "object",
-                          "location",
-                          "person",
-                          "company",
-                          "video"
-                        ],
-                                               type: .string,
-                                               description: fillToken)]
+let parameterSchemas :[ String : Reference<Schema> ] =
+[
+  "Format" : .actual(Schema(enumValues: ["xml", "json", "jsonp"], type: .string, description: fillToken)),
+  "FieldList" : .actual(Schema(type: .array, description: fillToken, items: .item(.actual(Schema(type:.string, description: fillToken))))),
+  "Limit": .actual(Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100)),
+  "Offset": .actual(Schema(type: .integer, description: fillToken)),
+  "Sort": .actual(Schema(type: .string, description: fillToken, pattern: sortQueryRegEx)),
+  "Filter": .actual(Schema(type: .string, description: fillToken, pattern: filterQueryRegEx)),
+  "SubscriberOnly": .actual(Schema(type: .boolean, description: fillToken)),
+  "Page": .actual(Schema(type: .integer, description: fillToken)),
+  "VideoId": .actual(Schema(type: .integer, description: fillToken)),
+  "TimeToSave": .actual(Schema(type: .integer, description: fillToken)),
+  "GameId": .actual(Schema(type: .integer, description: fillToken)),
+  "PlatformId": .actual(Schema(type: .integer, description: fillToken)),
+  "Query": .actual(Schema(type: .string, description: fillToken)),
+  "ResourceType": .actual(Schema(enumValues:
+                                  [
+                                    "game",
+                                    "franchise",
+                                    "character",
+                                    "concept",
+                                    "object",
+                                    "location",
+                                    "person",
+                                    "company",
+                                    "video"
+                                  ],
+                                type: .string,
+                                description: fillToken))
+]
 let singular = [
   "/accessories" : "/accessory/{guid}",
   "/characters" : "/character/{guid}",
@@ -108,8 +112,8 @@ do
   guard let responseTableRowNodes = try? responseNode.nodes(forXPath: "tbody/tr") else { exit(EXIT_FAILURE) }
   var responseSchema = getSchema(fromTableRowNodes: responseTableRowNodes)
   responseSchema.xml = XML(name: "response", wrapped: true)
-  responseSchema.properties?["version"] = Schema(type:.string, description: fillToken, example: typeToken)
-  let responseSchemaDictionary = ["Response" : responseSchema]
+  responseSchema.properties?["version"] = .actual(Schema(type:.string, description: fillToken, example: typeToken))
+  let responseSchemaDictionary = ["Response" : Reference.actual(responseSchema)]
   var components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
                               securitySchemes: ["api_key" : securityScheme])
   
@@ -143,7 +147,8 @@ do
     else if [String](singular.values).contains(apiPath)
     {
       schemaName = "\(apiPath.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")).Detail"
-      extraSchema[schemaName] = nextSchema
+      guard case let .actual(pluralSchema) = nextSchema else { exit(EXIT_FAILURE) }
+      extraSchema[schemaName] = pluralSchema
     }
     else
     {
@@ -152,14 +157,14 @@ do
       components.schemas?[schemaName] = nextSchema
     }
     
-    let envelope : Schema
+    let envelope : Reference<Schema>
     if !excludeResponseSchemaArray.contains(apiPath)
     {
-      envelope = getResponseSchema(withChild: Schema(ref: "#/components/schemas/\(schemaName)"), isSingular: [String](singular.values).contains(apiPath))
+      envelope = .actual(getResponseSchema(withChild: .reference("#/components/schemas/\(schemaName)"), isSingular: [String](singular.values).contains(apiPath)))
     }
     else
     {
-      envelope = Schema(ref: "#/components/schemas/\(schemaName)")
+      envelope = .reference("#/components/schemas/\(schemaName)")
     }
     
     nextOperation.responses.responses?["200"]?.content?["application/json"]?.schema = envelope
@@ -174,13 +179,12 @@ do
     if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
     if apiPath == "/types"
     {
-      let formatSchema = Schema(ref: "#/components/schemas/Format")
-      nextOperation.parameters?.append(Parameter(name: "format", description: "The data format of the response takes either xml, json, or jsonp.", location: .query, schema: formatSchema, isRequired: false))
+      nextOperation.parameters?.append(Parameter(name: "format", description: "The data format of the response takes either xml, json, or jsonp.", location: .query, schema: .reference("#/components/schemas/Format"), isRequired: false))
     }
     for nextParameter in getParameters(fromPath: apiPath)
     {
       let pathParameterSchema = Schema(type: .string, description: fillToken)
-      nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, schema: pathParameterSchema, isRequired: true))
+      nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, schema: .actual(pathParameterSchema), isRequired: true))
     }
     let nextPathItem = PathItem(summary: fillToken, description: fillToken, get: nextOperation)
     paths[apiPath] = nextPathItem
@@ -191,7 +195,7 @@ do
   {
     let baseSchemaName = nextSchemaName.components(separatedBy: ".")[0]
     
-    let baseSchema = components.schemas![baseSchemaName]!
+    guard case let .actual(baseSchema) = components.schemas![baseSchemaName]! else { exit(EXIT_FAILURE) }
     let baseSchemaProperties = [String](baseSchema.properties!.keys).sorted()
     let differenceProperties = [String](nextSchema.properties!.keys).sorted().difference(from: baseSchemaProperties)
     let diffKeys : [String] = differenceProperties.compactMap({
@@ -205,17 +209,23 @@ do
       }
     })
     let extraProperties = nextSchema.properties!.filter { diffKeys.contains($0.key) }
-    components.schemas?[nextSchemaName] = Schema(allOf:[Schema(ref: "#/components/schemas/\(baseSchemaName)"), Schema(properties: extraProperties)])
+    components.schemas?[nextSchemaName] = .actual(Schema(allOf:[.reference("#/components/schemas/\(baseSchemaName)"), .actual(Schema(properties: extraProperties))]))
   }
   //Build search field_list
   let searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
-                                              .flatMap { $0.properties!.keys })).sorted()
+    .map {(reference) -> Schema in if case let .actual(schema) = reference { return schema } else { exit(EXIT_FAILURE) }}
+    .flatMap { $0.properties!.keys })).sorted()
   let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ $0.name == "field_list" }!
-  if case var .item(item) = paths["/search"]!.get!.parameters![fieldListParameterIndex].schema?.allOf?[1].items
+  if case var .actual(parameterSchema) = paths["/search"]!.get!.parameters![fieldListParameterIndex].schema,
+     case var .actual(fieldListSchema) = parameterSchema.allOf?[1],
+     case let .item(reference) = fieldListSchema.items,
+     case var .actual(item) = reference
   {
     item.enumValues?.append(contentsOf: searchFieldList)
     item.enumValues?.sort()
-    paths["/search"]!.get!.parameters![fieldListParameterIndex].schema?.allOf?[1].items = .item(item)
+    fieldListSchema.items = .item(.actual(item))
+    parameterSchema.allOf?[1] = .actual(fieldListSchema)
+    paths["/search"]!.get!.parameters![fieldListParameterIndex].schema = .actual(parameterSchema)
   }
   var openAPI = OpenAPI(openapi: "3.0.2",
                         info: Info(title: "Giant Bomb API",
@@ -273,20 +283,22 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     let schemaName = nextParameterName.capitalized.replacingOccurrences(of: "_", with: "")
     if parameterSchemas.keys.contains(schemaName)
     {
-      nextParameter.schema = Schema(ref: "#/components/schemas/\(schemaName)")
+      nextParameter.schema = .reference("#/components/schemas/\(schemaName)")
     }
-    else if schemaName == "Platforms" ||
-              schemaName == "Games"
+    else if schemaName == "Platforms"
     {
-      let idSchemaName = "\(schemaName.dropLast())Id"
-      nextParameter.schema = Schema(ref: "#/components/schemas/\(idSchemaName)")
+      nextParameter.schema = .reference("#/components/schemas/\(schemaName.dropLast())Id")
+    }
+    else if schemaName == "Game"
+    {
+      nextParameter.schema = .reference("#/components/schemas/\(schemaName)Id")
     }
     else if nextParameterName == "resources"
     {
       nextParameter.style = .form
       nextParameter.explode = false
-      let resourceSchema = Schema(type: .array, description: fillToken, items: .item(Schema(ref: "#/components/schemas/ResourceType")))
-      nextParameter.schema = resourceSchema
+      let resourceSchema = Schema(type: .array, description: fillToken, items: .item(.reference("#/components/schemas/ResourceType")))
+      nextParameter.schema = .actual(resourceSchema)
     }
     else if nextParameterName == "sort" ||
               nextParameterName == "filter"
@@ -298,8 +310,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
        nextParameterName == "limit"
     {
       let searchLimitSchema = Schema(allOf: [nextParameter.schema!,
-                                             Schema(maximum: 10)])
-      nextParameter.schema = searchLimitSchema
+                                             .actual(Schema(maximum: 10))])
+      nextParameter.schema = .actual(searchLimitSchema)
     }
     operation.parameters?.append(nextParameter)
   }
@@ -307,8 +319,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   if var fieldListParameter = operation.parameters?.first(where: {$0.name == "field_list"})
   {
     let fieldListSchema = Schema(enumValues: [String](schema.properties!.keys.sorted()), type: .string)
-    let overrideSchema = Schema(items: .item(fieldListSchema))
-    fieldListParameter.schema = Schema(allOf: [fieldListParameter.schema!, overrideSchema])
+    let overrideSchema = Schema(items: .item(.actual(fieldListSchema)))
+    fieldListParameter.schema = .actual(Schema(allOf: [fieldListParameter.schema!, .actual(overrideSchema)]))
     fieldListParameter.style = .form
     fieldListParameter.explode = false
     if let fieldListIndex = operation.parameters?.firstIndex(where: {$0.name == "field_list"})
@@ -317,34 +329,34 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     }
   }
   // Correct schema
-  if path == "/video/current-live" { schema.properties?["success"] = Schema(type: .integer, description: fillToken) }
+  if path == "/video/current-live" { schema.properties?["success"] = .actual(Schema(type: .integer, description: fillToken)) }
   else if path == "/video/get-saved-time"
   {
     schema.properties?.removeValue(forKey: "message")
-    schema.properties?["success"] = Schema(type: .integer, description: fillToken)
+    schema.properties?["success"] = .actual(Schema(type: .integer, description: fillToken))
   }
   else if path == "/video/get-all-saved-times"
   {
     let innerSchema = schema
-    let savedTimesSchema = Schema(type:.array, description: fillToken, items: .item(innerSchema))
-    var parentSchema = Schema(type: .object, properties: ["savedTimes" : savedTimesSchema])
-    parentSchema.properties?["success"] = Schema(type: .integer, description: fillToken)
+    let savedTimesSchema = Schema(type:.array, description: fillToken, items: .item(.actual(innerSchema)))
+    var parentSchema = Schema(type: .object, properties: ["savedTimes" : .actual(savedTimesSchema)])
+    parentSchema.properties?["success"] = .actual(Schema(type: .integer, description: fillToken))
     schema = parentSchema
   }
   else if path == "/video/save-time"
   {
-    let properties = ["success": Schema(type: .boolean, description: fillToken),
-                      "message": Schema(type: .string, description: fillToken)]
+    let properties = ["success": Reference.actual(Schema(type: .boolean, description: fillToken)),
+                      "message": Reference.actual(Schema(type: .string, description: fillToken))]
     schema = Schema(type: .object, description: fillToken, properties: properties)
   }
   else if path == "/search"
   {
     let innerSchema = schema
-    let schemaRefList = searchSchemaList.map { "#/components/schemas/\($0)" }.map { Schema(ref: $0 ) }
-    let parentSchema = Schema(allOf: [Schema(oneOf: schemaRefList), innerSchema])
+    let schemaRefList = searchSchemaList.map { "#/components/schemas/\($0)" }.map { Reference<Schema>.reference($0) }
+    let parentSchema = Schema(allOf: [.actual(Schema(oneOf: schemaRefList)), .actual(innerSchema)])
     schema = parentSchema
   }
-  let nextMediaType = MediaType(schema: schema)
+  let nextMediaType = MediaType(schema: .actual(schema))
   let descriptionTableViewStringValue = (try? tableNode.nodes(forXPath: descriptionTableRowXPath).first?.stringValue?.apiPageFormattedString) ?? fillToken
   let descriptionComponents = descriptionTableViewStringValue.components(separatedBy: "<br />")
   operation.summary = descriptionComponents[0]
@@ -396,7 +408,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
 
 func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
 {
-  var propertiesDictionary = [String : Schema]()
+  var propertiesDictionary = [String : Reference<Schema>]()
   for nextRow in tableRowNodes
   {
     guard let nextPropertyName = try? nextRow.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -414,23 +426,25 @@ func getSchema(fromTableRowNodes tableRowNodes: [XMLNode]) -> Schema
       let childProperty = Schema(type: .string, description: nextPropertyDescription, example: typeToken)
       if propertiesDictionary.keys.contains(parentName)
       {
-        propertiesDictionary[parentName]?.properties?[propertySegments[1]] = childProperty
+        guard case var .actual(parentProperty) = propertiesDictionary[parentName] else { exit(EXIT_FAILURE) }
+        parentProperty.properties?[propertySegments[1]] = .actual(childProperty)
+        propertiesDictionary[parentName] = .actual(parentProperty)
       }
       else
       {
-        let parentSchema = Schema(type: .object, description: fillToken, nullable: true, properties: [propertySegments[1] : childProperty])
-        propertiesDictionary[propertySegments[0]] = parentSchema
+        let parentSchema = Schema(type: .object, description: fillToken, nullable: true, properties: [propertySegments[1] : .actual(childProperty)])
+        propertiesDictionary[propertySegments[0]] = .actual(parentSchema)
       }
     }
     else if nextPropertyName == "resource_type"
     {
-      let resourceTypeSchema = Schema(allOf: [Schema(ref: "#/components/schemas/ResourceType"),
-                                              Schema(description: nextPropertyDescription)])
-      propertiesDictionary[nextPropertyName] = resourceTypeSchema
+      let resourceTypeSchema = Schema(allOf: [.reference("#/components/schemas/ResourceType"),
+                                              .actual(Schema(description: nextPropertyDescription))])
+      propertiesDictionary[nextPropertyName] = .actual(resourceTypeSchema)
     }
     else
     {
-      propertiesDictionary[nextPropertyName] = Schema(type: .string, description: nextPropertyDescription, example: typeToken)
+      propertiesDictionary[nextPropertyName] = .actual(Schema(type: .string, description: nextPropertyDescription, example: typeToken))
     }
   }
   
@@ -471,14 +485,14 @@ func getParameters(fromPath pathString: String) -> [String]
   return parameters
 }
 
-func getResponseSchema(withChild pathSchema: Schema, isSingular: Bool = false) -> Schema
+func getResponseSchema(withChild pathSchema: Reference<Schema>, isSingular: Bool = false) -> Schema
 {
   let resultSchema = isSingular ?
   pathSchema :
-  Schema(type: .array, items: Schema.ItemsValue.item(pathSchema))
+    .actual(Schema(type: .array, items: Schema.ItemsValue.item(pathSchema)))
   let extensionSchema = Schema(type: .object, properties: ["results" : resultSchema])
   
-  return Schema(type: .object, allOf: [Schema(ref: "#/components/schemas/Response"), extensionSchema])
+  return Schema(type: .object, allOf: [.reference("#/components/schemas/Response"), .actual(extensionSchema)])
 }
 
 extension XMLNode

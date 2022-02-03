@@ -71,7 +71,7 @@ struct Operation : Codable
 
 struct Components : Codable
 {
-  var schemas : [ String : Schema ]? = nil
+  var schemas : [ String : Reference<Schema> ]? = nil
   var securitySchemes : [ String : SecurityScheme]? = nil
 }
 
@@ -125,28 +125,19 @@ extension Responses : Codable
 
 struct Response : Codable
 {
-  enum CodingKeys : String, CodingKey
-  {
-    case ref = "$ref"
-    case description
-    case content
-  }
-  
-  var ref : String? = nil
   var description : String
   var content : [String : MediaType]? = nil
 }
 
 struct MediaType : Codable
 {
-  var schema : Schema?
+  var schema : Reference<Schema>? = nil
 }
 
 struct Schema : Codable
 {
   enum CodingKeys : String, CodingKey
   {
-    case ref = "$ref"
     case enumValues = "enum"
     case type
     case description
@@ -165,28 +156,26 @@ struct Schema : Codable
   }
   enum ItemsValue : Codable
   {
-    indirect case item(Schema)
+    indirect case item(Reference<Schema>)
     
     func encode(to encoder: Encoder) throws
     {
       switch self
       {
-      case let .item(schema):
-        try schema.encode(to: encoder)
+      case let .item(reference):
+        try reference.encode(to: encoder)
       }
     }
     
     init(from decoder: Decoder) throws {
-      let item = try Schema(from: decoder)
+      let item = try Reference<Schema>(from: decoder)
       self = .item(item)
     }
   }
   
 //  TODO: `init()` for straight `struct` instead of `ItemsValue` `enum` for `items`
 //  TODO: Find requirements from JSONSchema
-//  TODO: Properly do refs ("ref" property on objects? Protocols)
   var enumValues : [String]? = nil
-  var ref : String? = nil
   var type : JSONType? = nil
   var description : String? = nil
 //  TODO: Should be Any, find way to define any codable
@@ -195,12 +184,12 @@ struct Schema : Codable
   var maximum : Int? = nil
   var pattern : String? = nil
   var nullable : Bool? = nil
-  var properties : [String : Schema]? = nil
+  var properties : [String : Reference<Schema>]? = nil
   var title : String? = nil
   var items : ItemsValue? = nil
-  var anyOf : [Schema]? = nil
-  var allOf : [Schema]? = nil
-  var oneOf : [Schema]? = nil
+  var anyOf : [Reference<Schema>]? = nil
+  var allOf : [Reference<Schema>]? = nil
+  var oneOf : [Reference<Schema>]? = nil
   var xml : XML? = nil
 }
 
@@ -240,6 +229,34 @@ struct SecurityScheme : Codable
 //  openIdConnectUrl  string  openIdConnect  REQUIRED. OpenId Connect URL to discover OAuth2 configuration values. This MUST be in the form of a URL.
 }
 
+enum Reference<T : Codable> : Codable
+{
+  case reference(String)
+  case actual(T)
+  
+  enum CodingKeys : String, CodingKey
+  {
+    case reference = "$ref"
+  }
+  
+  init(from decoder: Decoder) throws
+  {
+    let container = try decoder.singleValueContainer()
+    self = .reference(try container.decode(String.self))
+  }
+
+  func encode(to encoder: Encoder) throws {
+    switch self
+    {
+    case let .reference(path):
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(path, forKey: .reference)
+    case let .actual(item):
+      try item.encode(to: encoder)
+    }
+  }
+}
+
 struct Parameter : Codable
 {
   enum ParameterStyle : String, Codable
@@ -269,7 +286,8 @@ struct Parameter : Codable
   var explode : Bool? = nil
   var description : String? = nil
   var location : APILocation
-  var schema : Schema? = nil
+  var schema : Reference<Schema>? = nil
+//  var schema : Schema? = nil
   var style : ParameterStyle? = nil
   var isRequired : Bool
   var allowReserved : Bool? = nil
