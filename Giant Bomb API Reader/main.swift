@@ -152,7 +152,8 @@ do
     }
     else
     {
-      let pathName = apiPath.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")
+      let pathName = apiPath.components(separatedBy: "/").last{ !$0.contains("id}") }!.capitalized.replacingOccurrences(of: "_", with: "")
+        .replacingOccurrences(of: "-", with: "")
       schemaName = pathName.hasSuffix("s") ? String(pathName.dropLast()) : pathName
       components.schemas?[schemaName] = nextSchema
     }
