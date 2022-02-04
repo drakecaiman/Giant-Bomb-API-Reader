@@ -21,6 +21,14 @@ let excludeResponseSchemaArray = ["/video/current-live",
 let sortQueryRegEx = #"^\w+:((asc)|(desc))$"#
 //!!!: named and numbered regex subroutines not working in apps
 let filterQueryRegEx = #"^((\w+:((\w+)|(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}))),?)+$"#
+let invalidAPIKeyResponseSchema = Schema(allOf: [Reference<Schema>.reference("#/components/schemas/Response"),
+                                                 .actual(Schema(properties:
+                                                                  [
+                                                                    "error": .actual(Schema(enumValues: [.string("Invalid API Key")])),
+                                                                    "status_code": .actual(Schema(enumValues: [.integer(100)])),
+                                                                    "results": .actual(Schema(enumValues: [.array([])]))
+                                                                  ]
+                                                               ))])
 let parameterSchemas :[ String : Reference<Schema> ] =
 [
   "Format" : .actual(Schema(enumValues: [.string("xml"), .string("json"), .string("jsonp")], type: .string, description: fillToken)),
@@ -36,6 +44,7 @@ let parameterSchemas :[ String : Reference<Schema> ] =
   "GameId": .actual(Schema(type: .integer, description: fillToken)),
   "PlatformId": .actual(Schema(type: .integer, description: fillToken)),
   "Query": .actual(Schema(type: .string, description: fillToken)),
+  "InvalidAPIKey": .actual(invalidAPIKeyResponseSchema),
   "ResourceType": .actual(Schema(enumValues:
                                   [
                                     .string("game"),
@@ -88,18 +97,9 @@ let searchSchemaList = ["Game",
                   "Company",
                   "Video"]
 
-let invalidAPIKeyResponseSchema = Schema(allOf: [Reference<Schema>.reference("#/components/schemas/Response"),
-                                                 .actual(Schema(properties:
-                                                                  [
-                                                                    "error": .actual(Schema(enumValues: [.string("Invalid API Key")])),
-                                                                    "status_code": .actual(Schema(enumValues: [.integer(100)])),
-                                                                    "results": .actual(Schema(enumValues: [.array([])])),
-//                                                                    "error": .actual(Schema(enumValues: ["Invalid API Key"]))
-                                                                  ]
-                                                               ))])
-let invalidAPIKeyResponse = Response(description: fillToken, content: ["application/json": MediaType(schema: .actual(invalidAPIKeyResponseSchema)),
-                                                                       "application/xml": MediaType(schema: .actual(invalidAPIKeyResponseSchema)),
-                                                                       "application/jsonp": MediaType(schema: .actual(invalidAPIKeyResponseSchema))])
+let invalidAPIKeyResponse = Response(description: fillToken, content: ["application/json": MediaType(schema: .reference("#/components/schemas/InvalidAPIKey")),
+                                                                       "application/xml": MediaType(schema: .reference("#/components/schemas/InvalidAPIKey")),
+                                                                       "application/jsonp": MediaType(schema: .reference("#/components/schemas/InvalidAPIKey"))])
 let responses : [String : Reference<Response>]  = ["InvalidAPIKey": .actual(invalidAPIKeyResponse)]
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
