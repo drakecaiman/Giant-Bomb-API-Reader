@@ -23,7 +23,7 @@ let sortQueryRegEx = #"^\w+:((asc)|(desc))$"#
 let filterQueryRegEx = #"^((\w+:((\w+)|(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}))),?)+$"#
 let parameterSchemas :[ String : Reference<Schema> ] =
 [
-  "Format" : .actual(Schema(enumValues: ["xml", "json", "jsonp"], type: .string, description: fillToken)),
+  "Format" : .actual(Schema(enumValues: [.string("xml"), .string("json"), .string("jsonp")], type: .string, description: fillToken)),
   "FieldList" : .actual(Schema(type: .array, description: fillToken, items: .item(.actual(Schema(type:.string, description: fillToken))))),
   "Limit": .actual(Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100)),
   "Offset": .actual(Schema(type: .integer, description: fillToken)),
@@ -38,15 +38,15 @@ let parameterSchemas :[ String : Reference<Schema> ] =
   "Query": .actual(Schema(type: .string, description: fillToken)),
   "ResourceType": .actual(Schema(enumValues:
                                   [
-                                    "game",
-                                    "franchise",
-                                    "character",
-                                    "concept",
-                                    "object",
-                                    "location",
-                                    "person",
-                                    "company",
-                                    "video"
+                                    .string("game"),
+                                    .string("franchise"),
+                                    .string("character"),
+                                    .string("concept"),
+                                    .string("object"),
+                                    .string("location"),
+                                    .string("person"),
+                                    .string("company"),
+                                    .string("video")
                                   ],
                                 type: .string,
                                 description: fillToken))
@@ -88,8 +88,19 @@ let searchSchemaList = ["Game",
                   "Company",
                   "Video"]
 
-//let invalidAPIKeySchemas = [Schema(ref: "#/components/schemas/Response"),
-//                            Schema(properties: ["results": ]]
+let invalidAPIKeyResponseSchema = Schema(allOf: [Reference<Schema>.reference("#/components/schemas/Response"),
+                                                 .actual(Schema(properties:
+                                                                  [
+                                                                    "error": .actual(Schema(enumValues: [.string("Invalid API Key")])),
+                                                                    "status_code": .actual(Schema(enumValues: [.integer(100)])),
+                                                                    "results": .actual(Schema(enumValues: [.array([])])),
+//                                                                    "error": .actual(Schema(enumValues: ["Invalid API Key"]))
+                                                                  ]
+                                                               ))])
+let invalidAPIKeyResponse = Response(description: fillToken, content: ["application/json": MediaType(schema: .actual(invalidAPIKeyResponseSchema)),
+                                                                       "application/xml": MediaType(schema: .actual(invalidAPIKeyResponseSchema)),
+                                                                       "application/jsonp": MediaType(schema: .actual(invalidAPIKeyResponseSchema))])
+let responses : [String : Reference<Response>]  = ["InvalidAPIKey": .actual(invalidAPIKeyResponse)]
 
 guard let apiURL = URL(string: "https://www.giantbomb.com/api/documentation/") else
 {
@@ -112,10 +123,29 @@ do
   guard let responseTableRowNodes = try? responseNode.nodes(forXPath: "tbody/tr") else { exit(EXIT_FAILURE) }
   var responseSchema = getSchema(fromTableRowNodes: responseTableRowNodes)
   responseSchema.xml = XML(name: "response", wrapped: true)
-  responseSchema.properties?["version"] = .actual(Schema(type:.string, description: fillToken, example: typeToken))
+  //Populate types for response schema
+  for nextProperty in ["error", "results"]
+  {
+    if case var .actual(schema) = responseSchema.properties?[nextProperty]
+    {
+      schema.example = nil
+      responseSchema.properties?[nextProperty] = .actual(schema)
+    }
+  }
+  for nextProperty in ["limit", "number_of_page_results", "number_of_total_results", "offset", "status_code"]
+  {
+    if case var .actual(schema) = responseSchema.properties?[nextProperty]
+    {
+      schema.type = .integer
+      schema.example = nil
+      responseSchema.properties?[nextProperty] = .actual(schema)
+    }
+  }
   let responseSchemaDictionary = ["Response" : Reference.actual(responseSchema)]
   var components = Components(schemas: parameterSchemas.merging(responseSchemaDictionary, uniquingKeysWith: { (first,second) in first }),
+                              responses:responses,
                               securitySchemes: ["api_key" : securityScheme])
+
   
   guard let pathNodes = try? documentationXMLDocument.nodes(forXPath: "//*[@id='default-content']/div/table[position()>1]")
   else
@@ -138,7 +168,8 @@ do
     var apiPath = getAPIPath(fromURL: url)
     var nextOperation = getOperation(fromTableNode: nextPathNode, forPath: apiPath)
     let schemaName : String
-    let nextSchema = nextOperation.responses.responses!["200"]!.content!["application/json"]!.schema
+    guard case var .actual(nextResponse) = nextOperation.responses.responses!["200"]!  else { exit(EXIT_FAILURE) }
+    let nextSchema = nextResponse.content!["application/json"]!.schema
     if [String](singular.keys).contains(apiPath)
     {
       schemaName = singular[apiPath]!.components(separatedBy: "/")[1].capitalized.replacingOccurrences(of: "_", with: "")
@@ -168,13 +199,12 @@ do
       envelope = .reference("#/components/schemas/\(schemaName)")
     }
     
-    nextOperation.responses.responses?["200"]?.content?["application/json"]?.schema = envelope
-    let content = nextOperation.responses.responses?["200"]?.content?["application/json"]
-    nextOperation.responses.responses?["200"]?.content?["application/xml"] = content
-    nextOperation.responses.responses?["200"]?.content?["application/jsonp"] = content
-    // Response(ref: "#/components/responses/InvalidAPIKey")
-    let response = nextOperation.responses.responses?["200"]
-    nextOperation.responses.responses?["401"] = response
+    nextResponse.content?["application/json"]?.schema = envelope
+    let content = nextResponse.content?["application/json"]
+    nextResponse.content?["application/xml"] = content
+    nextResponse.content?["application/jsonp"] = content
+    nextOperation.responses.responses?["200"] = .actual(nextResponse)
+    nextOperation.responses.responses?["401"] = .reference("#/components/responses/InvalidAPIKey")
     
     nextOperation.deprecated = (nextSummary?.contains("DEPRECATED") ?? false) ? true : nil
     if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
@@ -213,7 +243,7 @@ do
     components.schemas?[nextSchemaName] = .actual(Schema(allOf:[.reference("#/components/schemas/\(baseSchemaName)"), .actual(Schema(properties: extraProperties))]))
   }
   //Build search field_list
-  let searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
+  var searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
     .map {(reference) -> Schema in if case let .actual(schema) = reference { return schema } else { exit(EXIT_FAILURE) }}
     .flatMap { $0.properties!.keys })).sorted()
   let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ $0.name == "field_list" }!
@@ -222,8 +252,9 @@ do
      case let .item(reference) = fieldListSchema.items,
      case var .actual(item) = reference
   {
-    item.enumValues?.append(contentsOf: searchFieldList)
-    item.enumValues?.sort()
+    searchFieldList.append(contentsOf: item.enumValues?.compactMap { guard case let .string(string) = $0 else { return nil } ; return string } ?? [])
+    searchFieldList.sort()
+    item.enumValues = searchFieldList.map { .string($0) }
     fieldListSchema.items = .item(.actual(item))
     parameterSchema.allOf?[1] = .actual(fieldListSchema)
     paths["/search"]!.get!.parameters![fieldListParameterIndex].schema = .actual(parameterSchema)
@@ -262,7 +293,7 @@ catch
 
 func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Operation
 {
-  var operation = Operation(description: fillToken, parameters: [], responses: Responses(responses: [String:Response]()), summary: fillToken)
+  var operation = Operation(description: fillToken, parameters: [], responses: Responses(responses: [String:Reference<Response>]()), summary: fillToken)
   let fieldsHeaderTableRowXPath = "td/strong[text() = 'Fields']"
   let filterTableRowXPath = "tbody/tr[td[strong[text() = 'Filters']]]//following-sibling::tr[not(preceding-sibling::tr/\(fieldsHeaderTableRowXPath)) and not(\(fieldsHeaderTableRowXPath))]"
   let fieldTableRowXPath = "tbody/tr[td[strong[text() = 'Fields']]]//following-sibling::tr"
@@ -319,7 +350,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   var schema = getSchema(fromTableRowNodes: fieldTableRowNodes)
   if var fieldListParameter = operation.parameters?.first(where: {$0.name == "field_list"})
   {
-    let fieldListSchema = Schema(enumValues: [String](schema.properties!.keys.sorted()), type: .string)
+    let fieldListSchema = Schema(enumValues: [String](schema.properties!.keys.sorted()).map { .string($0)}, type: .string)
     let overrideSchema = Schema(items: .item(.actual(fieldListSchema)))
     fieldListParameter.schema = .actual(Schema(allOf: [fieldListParameter.schema!, .actual(overrideSchema)]))
     fieldListParameter.style = .form
@@ -367,7 +398,7 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
   }
   let nextResponse = Response(description: fillToken,
                               content: ["application/json": nextMediaType])
-  operation.responses.responses!["200"] = nextResponse
+  operation.responses.responses!["200"] = .actual(nextResponse)
   operation.security = [["api_key": []]]
   operation.externalDocs = ExternalDocumentation(description: fillToken, url: URL(string: "\(docURLString)#ADD")!)
   
@@ -491,8 +522,8 @@ func getResponseSchema(withChild pathSchema: Reference<Schema>, isSingular: Bool
   let resultSchema = isSingular ?
   pathSchema :
     .actual(Schema(type: .array, items: Schema.ItemsValue.item(pathSchema)))
-  let extensionSchema = Schema(type: .object, properties: ["results" : resultSchema])
-  
+  let extensionSchema = Schema(type: .object, properties: ["version": .actual(Schema(type:.string, description: fillToken, example: "1.0")),
+                                                           "results" : resultSchema])
   return Schema(type: .object, allOf: [.reference("#/components/schemas/Response"), .actual(extensionSchema)])
 }
 

@@ -72,6 +72,7 @@ struct Operation : Codable
 struct Components : Codable
 {
   var schemas : [ String : Reference<Schema> ]? = nil
+  var responses : [ String : Reference<Response> ]? = nil
   var securitySchemes : [ String : SecurityScheme]? = nil
 }
 
@@ -79,7 +80,7 @@ struct Responses
 {
   
   var defaultResponse : Response? = nil
-  var responses : [ String : Response ]? = nil
+  var responses : [ String : Reference<Response> ]? = nil
 }
 
 extension Responses : Codable
@@ -105,10 +106,10 @@ extension Responses : Codable
   {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     self.defaultResponse = try container.decode(Response.self, forKey: CodingKeys(stringValue: CodingKeys.DEFAULT_KEY)!)
-    self.responses = [String:Response]()
+    self.responses = [String:Reference<Response>]()
     for nextKey in container.allKeys.filter({ $0.stringValue != CodingKeys.DEFAULT_KEY })
     {
-      self.responses![nextKey.stringValue] = try container.decode(Response.self, forKey: nextKey)
+      self.responses![nextKey.stringValue] = try container.decode(Reference<Response>.self, forKey: nextKey)
     }
   }
   
@@ -152,6 +153,7 @@ struct Schema : Codable
     case allOf
     case anyOf
     case oneOf
+    case not
     case xml
   }
   enum ItemsValue : Codable
@@ -175,7 +177,53 @@ struct Schema : Codable
   
 //  TODO: `init()` for straight `struct` instead of `ItemsValue` `enum` for `items`
 //  TODO: Find requirements from JSONSchema
-  var enumValues : [String]? = nil
+  enum EnumType : Codable
+  {
+    case string(String)
+    case integer(Int)
+    case array([String])
+    
+    init(from decoder: Decoder) throws
+    {
+      if let container = try? decoder.singleValueContainer()
+      {
+        if let string = try? container.decode(String.self) { self = .string(string) }
+        else
+        {
+          let integer = try container.decode(Int.self)
+          self = .integer(integer)
+        }
+      }
+      else
+      {
+        var container = try decoder.unkeyedContainer()
+        var array = [String]()
+        while !container.isAtEnd
+        {
+          array.append(try container.decode(String.self))
+        }
+        self = .array(array)
+      }
+    }
+    
+    func encode(to encoder: Encoder) throws
+    {
+      switch self
+      {
+      case let .string(string):
+        var container = encoder.singleValueContainer()
+        try container.encode(string)
+      case let .integer(integer):
+        var container = encoder.singleValueContainer()
+        try container.encode(integer)
+      case let .array(array):
+        var container = encoder.unkeyedContainer()
+        try container.encode(contentsOf: array)
+      }
+    }
+  }
+  
+  var enumValues : [EnumType]? = nil
   var type : JSONType? = nil
   var description : String? = nil
 //  TODO: Should be Any, find way to define any codable
@@ -190,6 +238,7 @@ struct Schema : Codable
   var anyOf : [Reference<Schema>]? = nil
   var allOf : [Reference<Schema>]? = nil
   var oneOf : [Reference<Schema>]? = nil
+  var not : Reference<Schema>? = nil
   var xml : XML? = nil
 }
 
@@ -232,7 +281,7 @@ struct SecurityScheme : Codable
 enum Reference<T : Codable> : Codable
 {
   case reference(String)
-  case actual(T)
+  indirect case actual(T)
   
   enum CodingKeys : String, CodingKey
   {
