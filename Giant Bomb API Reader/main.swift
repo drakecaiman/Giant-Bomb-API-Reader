@@ -29,10 +29,27 @@ let invalidAPIKeyResponseSchema = Schema(allOf: [Reference<Schema>.reference("#/
                                                                     "results": .actual(Schema(enumValues: [.array([])]))
                                                                   ]
                                                                ))])
+var parameters: [String : Reference<Parameter>] =
+[
+  "Format" : .actual(Parameter(name: "format", location: .query, isRequired: false)),
+  "FieldList" : .actual(Parameter(name: "field_list", location: .query, isRequired: false)),
+  "Limit": .actual(Parameter(name: "limit", location: .query, isRequired: false)),
+  "Offset": .actual(Parameter(name: "offset", location: .query, isRequired: false)),
+  "Sort": .actual(Parameter(name: "sort", location: .query, isRequired: false)),
+  "Filter": .actual(Parameter(name: "filter", location: .query, isRequired: false)),
+  "SubscriberOnly": .actual(Parameter(name: "subscriber_only", location: .query, isRequired: false)),
+  "Page": .actual(Parameter(name: "page", location: .query, isRequired: false)),
+  "VideoId": .actual(Parameter(name: "video_id", location: .query, isRequired: false)),
+  "TimeToSave": .actual(Parameter(name: "time_to_save", location: .query, isRequired: false)),
+  "Game": .actual(Parameter(name: "game", location: .query, isRequired: false)),
+  "Platforms": .actual(Parameter(name: "platforms", location: .query, isRequired: false)),
+  "Query": .actual(Parameter(name: "query", location: .query, isRequired: false)),
+  "Resources": .actual(Parameter(name: "resources", location: .query, isRequired: false))
+]
 let parameterSchemas :[ String : Reference<Schema> ] =
 [
   "Format" : .actual(Schema(enumValues: [.string("xml"), .string("json"), .string("jsonp")], type: .string, description: fillToken)),
-  "FieldList" : .actual(Schema(type: .array, description: fillToken, items: .item(.actual(Schema(type:.string, description: fillToken))))),
+  "FieldList" : .actual(Schema(type: .array, description: fillToken/*, items: .item(.actual(Schema(type:.string, description: fillToken)))*/)),
   "Limit": .actual(Schema(type: .integer, description: fillToken, minimum: 0, maximum: 100)),
   "Offset": .actual(Schema(type: .integer, description: fillToken)),
   "Sort": .actual(Schema(type: .string, description: fillToken, pattern: sortQueryRegEx)),
@@ -210,12 +227,12 @@ do
     if apiPath == "/video_categories/{id}" { apiPath = "/video_categories" }
     if apiPath == "/types"
     {
-      nextOperation.parameters?.append(Parameter(name: "format", description: "The data format of the response takes either xml, json, or jsonp.", location: .query, schema: .reference("#/components/schemas/Format"), isRequired: false))
+      nextOperation.parameters?.append(.reference("#/components/parameters/Format"))
     }
     for nextParameter in getParameters(fromPath: apiPath)
     {
       let pathParameterSchema = Schema(type: .string, description: fillToken)
-      nextOperation.parameters?.append(Parameter(name: nextParameter, location: .path, schema: .actual(pathParameterSchema), isRequired: true))
+      nextOperation.parameters?.append(.actual(Parameter(name: nextParameter, description: fillToken, location: .path, schema: .actual(pathParameterSchema), isRequired: true)))
     }
     let nextPathItem = PathItem(summary: fillToken, description: fillToken, get: nextOperation)
     paths[apiPath] = nextPathItem
@@ -246,8 +263,9 @@ do
   var searchFieldList = [String](Set<String>(searchSchemaList.map { components.schemas![$0]! }
     .map {(reference) -> Schema in if case let .actual(schema) = reference { return schema } else { exit(EXIT_FAILURE) }}
     .flatMap { $0.properties!.keys })).sorted()
-  let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ $0.name == "field_list" }!
-  if case var .actual(parameterSchema) = paths["/search"]!.get!.parameters![fieldListParameterIndex].schema,
+  let fieldListParameterIndex = paths["/search"]!.get!.parameters!.firstIndex{ guard case let .actual(parameter) = $0 else { return false }; return parameter.name == "field_list" }!
+  if case var .actual(parameter) = paths["/search"]!.get!.parameters![fieldListParameterIndex],
+     case var .actual(parameterSchema) = parameter.schema,
      case var .actual(fieldListSchema) = parameterSchema.allOf?[1],
      case let .item(reference) = fieldListSchema.items,
      case var .actual(item) = reference
@@ -257,8 +275,10 @@ do
     item.enumValues = searchFieldList.map { .string($0) }
     fieldListSchema.items = .item(.actual(item))
     parameterSchema.allOf?[1] = .actual(fieldListSchema)
-    paths["/search"]!.get!.parameters![fieldListParameterIndex].schema = .actual(parameterSchema)
+    parameter.schema = .actual(parameterSchema)
+    paths["/search"]!.get!.parameters![fieldListParameterIndex] = .actual(parameter)
   }
+  components.parameters = parameters
   var openAPI = OpenAPI(openapi: "3.0.2",
                         info: Info(title: "Giant Bomb API",
                                    description: fillToken,
@@ -311,8 +331,8 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     else {
       continue
     }
-    var nextParameter = Parameter(name: nextParameterName, description: nextParameterDescription, location: .query, isRequired: false)
     let schemaName = nextParameterName.capitalized.replacingOccurrences(of: "_", with: "")
+    guard case var .actual(nextParameter) = parameters[schemaName] else { exit(EXIT_FAILURE) }
     if parameterSchemas.keys.contains(schemaName)
     {
       nextParameter.schema = .reference("#/components/schemas/\(schemaName)")
@@ -341,24 +361,38 @@ func getOperation(fromTableNode tableNode: XMLNode, forPath path: String) -> Ope
     if path == "/search",
        nextParameterName == "limit"
     {
-      let searchLimitSchema = Schema(allOf: [nextParameter.schema!,
-                                             .actual(Schema(maximum: 10))])
-      nextParameter.schema = .actual(searchLimitSchema)
+      let searchLimitSchema = Schema(allOf: [.reference("#/components/schemas/\(schemaName)"),
+                                             .actual(Schema(description: nextParameterDescription, maximum: 10))])
+      var searchLimitParameter = Parameter(name: "limit", location: .query, isRequired: false)
+      searchLimitParameter.description = nextParameterDescription
+      searchLimitParameter.schema = .actual(searchLimitSchema)
+      operation.parameters?.append(.actual(searchLimitParameter))
     }
-    operation.parameters?.append(nextParameter)
+    else if nextParameterName == "field_list"
+    {
+      var fieldListParameter = Parameter(name: "field_list", location: .query, isRequired: false)
+      fieldListParameter.name = nextParameterName
+      fieldListParameter.description = nextParameterDescription
+      operation.parameters?.append(.actual(fieldListParameter))
+    }
+    else
+    {
+      nextParameter.description = nextParameterDescription
+      operation.parameters?.append(.reference("#/components/parameters/\(schemaName)"))
+    }
+    parameters[schemaName] = .actual(nextParameter)
   }
   var schema = getSchema(fromTableRowNodes: fieldTableRowNodes)
-  if var fieldListParameter = operation.parameters?.first(where: {$0.name == "field_list"})
+  if let fieldListIndex = operation.parameters?.firstIndex(where: {guard case let .actual(parameter) = $0 else { return false }; return parameter.name == "field_list"})
   {
+    guard case var .actual(fieldListParameter) = operation.parameters?[fieldListIndex] else { exit(EXIT_FAILURE) }
     let fieldListSchema = Schema(enumValues: [String](schema.properties!.keys.sorted()).map { .string($0)}, type: .string)
     let overrideSchema = Schema(items: .item(.actual(fieldListSchema)))
-    fieldListParameter.schema = .actual(Schema(allOf: [fieldListParameter.schema!, .actual(overrideSchema)]))
+    fieldListParameter.schema = .actual(Schema(allOf: [.reference("#/components/schemas/FieldList"), .actual(overrideSchema)]))
     fieldListParameter.style = .form
     fieldListParameter.explode = false
-    if let fieldListIndex = operation.parameters?.firstIndex(where: {$0.name == "field_list"})
-    {
-      operation.parameters?[fieldListIndex] = fieldListParameter
-    }
+//    fieldListParameter.n
+    operation.parameters?[fieldListIndex] = .actual(fieldListParameter)
   }
   // Correct schema
   if path == "/video/current-live" { schema.properties?["success"] = .actual(Schema(type: .integer, description: fillToken)) }

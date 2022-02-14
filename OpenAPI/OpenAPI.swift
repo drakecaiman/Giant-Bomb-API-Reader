@@ -62,7 +62,7 @@ struct Operation : Codable
   var deprecated : Bool? = nil
   var description : String? = nil
   var externalDocs : ExternalDocumentation? = nil
-  var parameters : [Parameter]? = nil
+  var parameters : [Reference<Parameter>]? = nil
   var responses : Responses
   var security : [[String : [String]]]? = nil
   var summary : String? = nil
@@ -72,6 +72,7 @@ struct Operation : Codable
 struct Components : Codable
 {
   var schemas : [ String : Reference<Schema> ]? = nil
+  var parameters : [ String : Reference<Parameter> ]? = nil
   var responses : [ String : Reference<Response> ]? = nil
   var securitySchemes : [ String : SecurityScheme]? = nil
 }
