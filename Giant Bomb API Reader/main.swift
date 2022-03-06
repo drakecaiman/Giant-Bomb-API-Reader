@@ -171,7 +171,7 @@ do
     exit(EXIT_FAILURE)
   }
   var paths = [String : PathItem]()
-  var extraSchema = [ String : Schema ]()
+  var extraSchema = [String : Schema]()
   for nextPathNode in pathNodes
   {
     guard let urlRowString = try? nextPathNode.nodes(forXPath: "tbody/tr[1]").first?.stringValue,
@@ -561,6 +561,20 @@ func getResponseSchema(withChild pathSchema: Reference<Schema>, isSingular: Bool
   return Schema(type: .object, allOf: [.reference("#/components/schemas/Response"), .actual(extensionSchema)])
 }
 
+func getSortable(fromTableRowNodes tableRowNodes: [XMLNode]) -> [String]
+{
+  return tableRowNodes
+    .filter { (try? $0.nodes(forXPath: "td[3]/svg")) != nil }
+    .compactMap { try? $0.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+func getFilterable(fromTableNode tableRowNodes: [XMLNode]) -> [String]
+{
+  return tableRowNodes
+    .filter { (try? $0.nodes(forXPath: "td[4]/svg")) != nil }
+    .compactMap { try? $0.nodes(forXPath: "td[1]").first?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
 extension XMLNode
 {
   var giantBombDescriptionString : String
@@ -585,3 +599,10 @@ extension String
       .replacingOccurrences(of: "NEED DESCRIPTION", with: fillToken)
   }
 }
+
+class NavigationDelegate : NSObject, WKNavigationDelegate
+{
+  func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+  }
+}
+
